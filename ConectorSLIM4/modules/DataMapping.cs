@@ -11,25 +11,38 @@ namespace ConectorSLIM4.modules
         private string _mapId;
         private string _originTable;
         private string _destinationTable;
+        private string _originServer;
+        private string _destinationServer;
 
-        public string MapId { get => _mapId; set => _mapId = value; }
-        public string FromTable { get => _originTable; set => _originTable = value; }
-        public string ToTable { get => _destinationTable ; set => _destinationTable  = value; }        
+        public string MapId { get => _mapId; private set => _mapId = value; }
+        public string OriginServer { get => _originServer; private set => _originServer = value; }
+        public string OriginDataBase { get; private set; }
+        public string DestinationServer { get => _destinationServer; private set  => _destinationServer = value; }
+        public string DestinationDataBase { get; private set; }
+        public string FromTable { get => _originTable; private set => _originTable = OriginServer + "." + OriginDataBase + ".dbo." + value; }
+        public string ToTable { get => _destinationTable ; private set => _destinationTable  = DestinationServer + "." + DestinationDataBase + ".dbo." + value; }
+        public string FromTableName { get; private set; }
+        public string ToTableName { get; private set; }
+
+        public TableMap(string originServer, string destinationServer, string originDB, string destinationDB,string fromTable, string toTable)
+        {            
+            OriginServer = originServer;
+            DestinationServer = destinationServer;
+            OriginDataBase = originDB;
+            DestinationDataBase = destinationDB;
+            FromTable = fromTable;
+            ToTable = toTable;
+            FromTableName = fromTable;
+            ToTableName = toTable;
+            MapId = FromTable + '-' + ToTable;
+        }
 
         private readonly List<FieldMap> _fieldMaps = new();
 
         public List<FieldMap> FieldMaps { get => _fieldMaps; }
 
-        public void AddFieldMap(FieldMap fieldMap)
-        {
-            FieldMap fullFieldName = new()
-            {
-                OriginField = fieldMap.OriginField.Contains(_originTable) ? fieldMap.OriginField : _originTable + "." + fieldMap.OriginField,
-                DestinationField = fieldMap.DestinationField.Contains(_destinationTable) ? fieldMap.DestinationField : _destinationTable + "." + fieldMap.DestinationField,
-            };
+        public void AddFieldMap(FieldMap fieldMap) => _fieldMaps.Add(fieldMap);
 
-            _fieldMaps.Add(fullFieldName);
-        }
     }
 
     public class FieldMap

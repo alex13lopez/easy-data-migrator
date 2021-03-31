@@ -39,11 +39,22 @@ namespace ConectorSLIM4.modules
             if (destinationReader != null)
                 destTable.Load(destinationReader);
 
-            CreateTableMaps(originTable, destTable, originPatterMatching, destinationPatternMatching, excludePatternsFromMatch);
+
+            CreateTableMaps(originTable,
+                            destTable,
+                            originConnection.ServerName,
+                            destinationConnection.ServerName,
+                            originConnection.DataBaseName,
+                            destinationConnection.DataBaseName,
+                            originPatterMatching,
+                            destinationPatternMatching,
+                            excludePatternsFromMatch
+                            );
+
             CreateFieldMaps(originTable, destTable);                        
         }
 
-        private float CreateTableMaps(DataTable originTable, DataTable destTable, string originPatterMatching = null, string destinationPatternMatching = null, bool excludePatternsFromMatch = true)
+        private float CreateTableMaps(DataTable originTable, DataTable destTable, string originServer, string destinationServer, string originDB, string destinationDB, string originPatterMatching = null, string destinationPatternMatching = null, bool excludePatternsFromMatch = true)
         {
             IEnumerable<string> origTables = originTable.AsEnumerable().Select(r => r.Field<string>("TableName")).Distinct();
             IEnumerable<string> destTables = destTable.AsEnumerable().Select(r => r.Field<string>("TableName")).Distinct();
@@ -68,14 +79,7 @@ namespace ConectorSLIM4.modules
                     if (oTableNameF == dTableNameF)
                     {
                         matchedCount++;
-                        TableMap tableMap = new()
-                        {
-                            MapId = oTableName + "-" + dTableName,
-                            FromTable = oTableName,
-                            ToTable = dTableName
-                        };
-
-                        _ = FindOrCreateTableMap(tableMap);
+                        _ = FindOrCreateTableMap(new TableMap(originServer, destinationServer, originDB, destinationDB, oTableName, dTableName));
                     }
                 }
             }
@@ -102,34 +106,19 @@ namespace ConectorSLIM4.modules
             foreach (TableMap tableMap in _tableMaps)
             {
                 List<string> oFields = (from f in originTable.AsEnumerable()
-                                       where f.Field<string>("TableName") == tableMap.FromTable
+                                       where f.Field<string>("TableName") == tableMap.FromTableName
                                        select f.Field<string>("ColumnName")).ToList();
 
                 List<string> dFields = (from f in destTable.AsEnumerable()
-                                        where f.Field<string>("TableName") == tableMap.ToTable
+                                        where f.Field<string>("TableName") == tableMap.ToTableName
                                         select f.Field<string>("ColumnName")).ToList();
 
                 foreach (string oField in oFields)
                     foreach (string dField in dFields)
-                        if (oField == dField)
+                        if (oField.ToLower() == dField.ToLower()) // We compare names case insensitive
                             tableMap.AddFieldMap(new FieldMap(oField, dField));
             }
-
-            foreach (DataRow origRow in originTable.Rows)
-            {
-                foreach (DataRow destRow in destTable.Rows)
-                {
-                    string originColumn = "", destColumn = "";
-                    originColumn = (string)origRow.Field<string>("ColumnName");
-                    destColumn = (string)destRow.Field<string>(("ColumnName"));
-
-                    if (originColumn == destColumn)
-                    {
-
-                    }
-
-                }
-            }
+            
         }        
     }
 }

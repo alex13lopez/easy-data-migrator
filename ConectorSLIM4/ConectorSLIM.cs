@@ -18,13 +18,9 @@ namespace ConectorSLIM4
 
             foreach (TableMap tableMap in mapper.TableMaps)
             {
-                Console.WriteLine($"MapId: {tableMap.MapId}");
-                Console.WriteLine($"FromTable: {tableMap.FromTable}");
-                Console.WriteLine($"ToTable: {tableMap.ToTable}");
-                Console.WriteLine("");
-                Console.WriteLine("Mapped fields:");
-                tableMap.FieldMaps.ForEach(fieldMap => Console.WriteLine($"FromField: {fieldMap.OriginField} to DestinationField: {fieldMap.DestinationField}"));
-                Console.WriteLine("");
+                destConnection.OpenConnection();
+                string sql = QueryBuilder.InsertQuery(tableMap);
+                destConnection.ModifyDB(sql, true);
             }
 
             Console.ReadKey();

@@ -9,10 +9,15 @@ namespace ConectorSLIM4.modules
         private readonly SqlConnection _sqlConnection;
         private SqlTransaction _sqlTransaction;
 
+        public string ServerName { get; private set; }
+        public string DataBaseName { get; private set; }        
+
         public DbConnector(string ConnectionStringKey) //Conexión a BD SQL Server
         {
             string connectionString = ConfigurationManager.ConnectionStrings[ConnectionStringKey].ConnectionString;
-            _sqlConnection = new SqlConnection(connectionString);            
+            _sqlConnection = new SqlConnection(connectionString);
+            ServerName = _sqlConnection.DataSource;
+            DataBaseName = _sqlConnection.Database;
         }
 
         public SqlDataReader ReadDB(string sql, bool transactionedQuery = false) // Reading data operations, by default we do NOT require transaction since we are not modifying data on de DB

@@ -10,9 +10,17 @@ namespace ConectorSLIM4.modules
     {
         public static string InsertQuery(TableMap TableMap)
         {
-            string query = "";
+            // Insert Into destination
+            string query = "INSERT INTO " + TableMap.ToTable + "(";
+            TableMap.FieldMaps.ForEach(map => query += map.DestinationField + ",");
+            query = query.Remove(query.Length - 1); // We remove last comma
+            query += ") ";
 
-
+            // We select the data to insert from origin
+            query += "SELECT ";
+            TableMap.FieldMaps.ForEach(map => query += map.OriginField + ",");
+            query = query.Remove(query.Length - 1); // We remove last comma
+            query += " FROM " + TableMap.FromTable;
 
             return query;
         }
