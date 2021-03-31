@@ -7,7 +7,6 @@
 
   <ItemGroup>
     <PackageReference Include="MSTest.TestFramework" Version="2.2.3" />
-    <PackageReference Include="SqlKata" Version="2.3.2" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="5.0.0" />
     <PackageReference Include="System.Data.SqlClient" Version="4.8.2" />
   </ItemGroup>

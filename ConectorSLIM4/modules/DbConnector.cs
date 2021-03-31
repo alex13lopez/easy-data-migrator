@@ -1,5 +1,6 @@
-﻿
+﻿using System;
 using System.Configuration;
+using System.Data;
 using System.Data.SqlClient;
 
 namespace ConectorSLIM4.modules
@@ -10,7 +11,9 @@ namespace ConectorSLIM4.modules
         private SqlTransaction _sqlTransaction;
 
         public string ServerName { get; private set; }
-        public string DataBaseName { get; private set; }        
+        public string DataBaseName { get; private set; }     
+        
+        public SqlConnection SqlConnection { get => _sqlConnection; }
 
         public DbConnector(string ConnectionStringKey) //Conexión a BD SQL Server
         {
@@ -61,17 +64,35 @@ namespace ConectorSLIM4.modules
             {
                 command = new SqlCommand(sql, _sqlConnection);
             }
-                    
-            adapter.UpdateCommand = command;
+            command.CommandTimeout = 360; // 6 minutes
+            adapter.UpdateCommand = command;           
             adapter.UpdateCommand.ExecuteNonQuery();
         }
 
-        public void OpenConnection() => _sqlConnection.Open();
-        public void CloseConnection() => _sqlConnection.Close();
+        public void Open() => _sqlConnection.Open();
+        public void Close() => _sqlConnection.Close();
         public void BeginTransaction(string transName = "DefaultTransaction") => _sqlTransaction = _sqlConnection.BeginTransaction(transName);
 
         public void CommitTransaction() => _sqlTransaction.Commit();
 
         public void RollBackTransaction(string transName = "DefaultTransaction") => _sqlTransaction.Rollback(transName);
+
+        public void BulkCopy(DataTable data,TableMap tableMap)
+        {            
+            using (SqlBulkCopy bulkCopy = new(_sqlConnection, SqlBulkCopyOptions.Default, _sqlTransaction))
+            {
+                bulkCopy.DestinationTableName = tableMap.DestinationDataBase + ".dbo." + tableMap.ToTableName;
+                bulkCopy.BulkCopyTimeout = 360; // 6 minutes
+
+                try
+                {
+                    bulkCopy.WriteToServer(data);                   
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                }
+            }
+        }
     }
 }

@@ -79,7 +79,9 @@ namespace ConectorSLIM4.modules
                     if (oTableNameF == dTableNameF)
                     {
                         matchedCount++;
-                        _ = FindOrCreateTableMap(new TableMap(originServer, destinationServer, originDB, destinationDB, oTableName, dTableName));
+                        bool useBulkCopy = ConfigurationManager.AppSettings["useBulkCopyTables"].Contains(oTableName);
+
+                        _ = FindOrCreateTableMap(new TableMap(originServer, destinationServer, originDB, destinationDB, oTableName, dTableName, useBulkCopy));
                     }
                 }
             }

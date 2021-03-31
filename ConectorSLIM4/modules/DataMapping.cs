@@ -14,6 +14,10 @@ namespace ConectorSLIM4.modules
         private string _originServer;
         private string _destinationServer;
 
+        // If useBulkCopy is active, we will load the table into memory and then we will copy to destination server
+        // This is used for tables that contain a lot of records so we can load them be doing several inserts instead of only one
+        private bool _useBulkCopy;
+
         public string MapId { get => _mapId; private set => _mapId = value; }
         public string OriginServer { get => _originServer; private set => _originServer = value; }
         public string OriginDataBase { get; private set; }
@@ -22,9 +26,10 @@ namespace ConectorSLIM4.modules
         public string FromTable { get => _originTable; private set => _originTable = OriginServer + "." + OriginDataBase + ".dbo." + value; }
         public string ToTable { get => _destinationTable ; private set => _destinationTable  = DestinationServer + "." + DestinationDataBase + ".dbo." + value; }
         public string FromTableName { get; private set; }
-        public string ToTableName { get; private set; }
-
-        public TableMap(string originServer, string destinationServer, string originDB, string destinationDB,string fromTable, string toTable)
+        public string ToTableName { get; private set; }        
+        public bool UseBulkCopy { get => _useBulkCopy; private set => _useBulkCopy = value; }
+        
+        public TableMap(string originServer, string destinationServer, string originDB, string destinationDB,string fromTable, string toTable, bool useBulkCopy = false)
         {            
             OriginServer = originServer;
             DestinationServer = destinationServer;
@@ -35,6 +40,7 @@ namespace ConectorSLIM4.modules
             FromTableName = fromTable;
             ToTableName = toTable;
             MapId = FromTable + '-' + ToTable;
+            _useBulkCopy = useBulkCopy;
         }
 
         private readonly List<FieldMap> _fieldMaps = new();
