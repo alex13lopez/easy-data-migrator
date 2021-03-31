@@ -16,12 +16,21 @@ namespace ConectorSLIM4
             origConnection.CloseConnection();
             destConnection.CloseConnection();
 
+            // We open connection to begin insert dataA
+            destConnection.OpenConnection();
             foreach (TableMap tableMap in mapper.TableMaps)
             {
-                destConnection.OpenConnection();
+                Console.WriteLine($"Inserting records from {tableMap.FromTable} to {tableMap.ToTable}.");
+                
                 string sql = QueryBuilder.InsertQuery(tableMap);
+                destConnection.BeginTransaction();
                 destConnection.ModifyDB(sql, true);
+                destConnection.CommitTransaction();
+                Console.WriteLine($"Inserted records from {tableMap.FromTable} to {tableMap.ToTable} successfully!");
+                break;
             }
+            
+            destConnection.CloseConnection();
 
             Console.ReadKey();
         }
