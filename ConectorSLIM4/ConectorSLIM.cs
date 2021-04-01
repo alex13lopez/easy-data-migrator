@@ -17,12 +17,16 @@ namespace ConectorSLIM4
             mapper.TryAutoMapping(origConnection, destConnection, "SLIM_");
             origConnection.Close();
             destConnection.Close();
+           
+            if (!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["BeforeInsertQuery"]))
+            {
+                origConnection.Open();
+                origConnection.ModifyDB(ConfigurationManager.AppSettings["BeforeInsertQuery"]);
+                origConnection.Close();
+            }
 
             // We open connection to begin insert data
             destConnection.Open();
-
-            if (!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["BeforeInsertQuery"]))
-                destConnection.ModifyDB(ConfigurationManager.AppSettings["BeforeInsertQuery"]);
 
             foreach (TableMap tableMap in mapper.TableMaps)
             {
@@ -53,6 +57,8 @@ namespace ConectorSLIM4
                     origConnection.Close();
 
                     destConnection.BeginTransaction();
+                    string sqlDelete = QueryBuilder.Delete(tableMap);
+                    destConnection.ModifyDB(sqlDelete, true);
                     destConnection.BulkCopy(data, tableMap);
                     destConnection.CommitTransaction();
 
@@ -63,8 +69,12 @@ namespace ConectorSLIM4
             }
 
             if (!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["AfterInsertQuery"]))
-                destConnection.ModifyDB(ConfigurationManager.AppSettings["AfterInsertQuery"]);
+            {
+                string sql = ConfigurationManager.AppSettings["AfterInsertQuery"].Replace("$TIMESTAMP", "'" + DateTime.Now.ToString("yyyyMMdd HHmmss") + "'");
+                destConnection.ModifyDB(sql);
+            }
 
+            // When we've finished all operations, we finally close the destination connection
             destConnection.Close();
 
 #if DEBUG

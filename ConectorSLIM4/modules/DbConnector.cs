@@ -77,11 +77,16 @@ namespace ConectorSLIM4.modules
 
         public void BulkCopy(DataTable data,TableMap tableMap)
         {            
-            using (SqlBulkCopy bulkCopy = new(_sqlConnection, SqlBulkCopyOptions.Default, _sqlTransaction))
+            using (SqlBulkCopy bulkCopy = new(_sqlConnection, SqlBulkCopyOptions.KeepNulls, _sqlTransaction))
             {
                 bulkCopy.DestinationTableName = tableMap.DestinationDataBase + ".dbo." + tableMap.ToTableName;
                 bulkCopy.BulkCopyTimeout = 360; // 6 minutes
 
+                tableMap.FieldMaps.ForEach(fieldMap => bulkCopy.ColumnMappings.Add(fieldMap.OriginField, fieldMap.DestinationField));
+
+                //var t = bulkCopy.ColumnMappings;
+                //Console.WriteLine(t);
+                
                 try
                 {
                     bulkCopy.WriteToServer(data);                   
