@@ -26,7 +26,6 @@ namespace ConectorSLIM4.modules
         public SqlDataReader ReadDB(string sql, bool transactionedQuery = false) // Reading data operations, by default we do NOT require transaction since we are not modifying data on de DB
         {
             SqlCommand command;
-            SqlDataReader dataReader;
 
             if (transactionedQuery && _sqlTransaction != null)
             {
@@ -42,8 +41,7 @@ namespace ConectorSLIM4.modules
                 command = new SqlCommand(sql, _sqlConnection);
             }
 
-            dataReader = command.ExecuteReader();
-            return dataReader;
+            return command.ExecuteReader();
         }
 
         public void ModifyDB(string sql, bool transactionedQuery = true) // Modify data operations, by default we DO require transaction since we are modifying data on de DB and something could go wrong

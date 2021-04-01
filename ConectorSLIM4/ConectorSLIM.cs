@@ -1,6 +1,6 @@
 ﻿using System;
+using System.Configuration;
 using System.Data;
-using System.Data.SqlClient;
 using ConectorSLIM4.modules;
 
 namespace ConectorSLIM4
@@ -18,10 +18,16 @@ namespace ConectorSLIM4
             origConnection.Close();
             destConnection.Close();
 
-            // We open connection to begin insert dataA
+            // We open connection to begin insert data
             destConnection.Open();
             foreach (TableMap tableMap in mapper.TableMaps)
             {
+                if (tableMap.DestinationTableBusy)
+                {
+                    Console.WriteLine($"Skipping table ${tableMap.ToTable} because it is currently busy");
+                    continue;
+                }
+
                 Console.WriteLine($"Inserting records from {tableMap.FromTable} to {tableMap.ToTable}.");                
                 if (!tableMap.UseBulkCopy)
                 {
@@ -29,8 +35,8 @@ namespace ConectorSLIM4
                     string sqlInsert = QueryBuilder.Insert(tableMap);
                 
                     destConnection.BeginTransaction();
-                    destConnection.ModifyDB(sqlDelete);
-                    destConnection.ModifyDB(sqlInsert, true);                    
+                    destConnection.ModifyDB(sqlDelete, true);
+                    destConnection.ModifyDB(sqlInsert, true);              
                     destConnection.CommitTransaction();
                 }
                 else
@@ -45,9 +51,16 @@ namespace ConectorSLIM4
                     destConnection.BeginTransaction();
                     destConnection.BulkCopy(data, tableMap);
                     destConnection.CommitTransaction();
+
+                    // We free used resources since we don't need them anymore
+                    data.Dispose();
                 }
                 Console.WriteLine($"Inserted records from {tableMap.FromTable} to {tableMap.ToTable} successfully!");
             }
+
+            if (!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["AfterInsertQuery"]))
+                destConnection.ModifyDB(ConfigurationManager.AppSettings["AfterInsertQuery"]);
+
             destConnection.Close();
         }
     }

@@ -79,14 +79,14 @@ namespace ConectorSLIM4.modules
                     if (oTableNameF == dTableNameF)
                     {
                         matchedCount++;
-                        bool useBulkCopy = ConfigurationManager.AppSettings["useBulkCopyTables"].Contains(oTableName);
+                        bool useBulkCopy = ConfigurationManager.AppSettings["UseBulkCopyTables"].Contains(oTableName);
 
                         _ = FindOrCreateTableMap(new TableMap(originServer, destinationServer, originDB, destinationDB, oTableName, dTableName, useBulkCopy));
                     }
                 }
             }
 
-            return matchedCount / mapCount; // We return the success percentage
+            return mapCount > 0 ? matchedCount / mapCount : 0; // We return the success percentage
         }
 
         private TableMap FindOrCreateTableMap(TableMap tableMap)
@@ -99,7 +99,55 @@ namespace ConectorSLIM4.modules
                 tMap = _tableMaps.Find(t => t.MapId == tableMap.MapId);
             }
 
+            // We try to find the status of the destination table
+            if (!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["GetTableIdQuery"]) && !string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["GetDestTableStatus"]))
+            {
+                tMap.DestinationTableBusy = IsDestTableBusy(tMap);
+            }
+
             return tMap;
+        }
+
+        public bool IsDestTableBusy(TableMap tMap)
+        {
+            if (!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["GetTableIdQuery"]) && !string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["GetDestTableStatus"]))
+            {
+                DbConnector destConnection = new("SLIMConnectionString");
+                string getTableIdSql = ConfigurationManager.AppSettings["GetTableIdQuery"];
+                string getTableStatusSql = ConfigurationManager.AppSettings["GetDestTableStatus"];
+
+                getTableIdSql = getTableIdSql.Replace("$TABLENAME", "'" + tMap.ToTableName + "'");
+
+                destConnection.Open();
+                string tableId = null;
+
+                using (SqlDataReader reader = destConnection.ReadDB(getTableIdSql))
+                {
+
+                    if (reader.Read())
+                    {
+                         tableId = reader.GetString(0);
+                    }                   
+                }
+
+                getTableStatusSql = getTableStatusSql.Replace("$TABLEID", tableId);
+
+                bool busy = true;
+
+                using (SqlDataReader reader = destConnection.ReadDB(getTableStatusSql))
+                {
+                    if (reader.Read())
+                    {
+                        busy = reader.GetInt32(0) == 1 ? true : false;
+                    }
+                }                
+
+                destConnection.Close();
+
+                return busy;
+            }
+
+            return true; // If we cannot determine the status of the table, we'll asume it's busy to avoid conflicts
         }
 
         private void CreateFieldMaps(DataTable originTable, DataTable destTable)

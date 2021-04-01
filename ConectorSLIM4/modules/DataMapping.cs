@@ -28,8 +28,10 @@ namespace ConectorSLIM4.modules
         public string FromTableName { get; private set; }
         public string ToTableName { get; private set; }        
         public bool UseBulkCopy { get => _useBulkCopy; private set => _useBulkCopy = value; }
-        
-        public TableMap(string originServer, string destinationServer, string originDB, string destinationDB,string fromTable, string toTable, bool useBulkCopy = false)
+        public bool DestinationTableBusy { get; set; }
+
+
+        public TableMap(string originServer, string destinationServer, string originDB, string destinationDB,string fromTable, string toTable, bool useBulkCopy = false, bool destinationTableBusy = false)
         {            
             OriginServer = originServer;
             DestinationServer = destinationServer;
@@ -41,6 +43,7 @@ namespace ConectorSLIM4.modules
             ToTableName = toTable;
             MapId = FromTable + '-' + ToTable;
             _useBulkCopy = useBulkCopy;
+            DestinationTableBusy = destinationTableBusy;
         }
 
         private readonly List<FieldMap> _fieldMaps = new();
