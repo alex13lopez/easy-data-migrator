@@ -130,17 +130,19 @@ namespace ConectorSLIM4.modules
                     }                   
                 }
 
-                getTableStatusSql = getTableStatusSql.Replace("$TABLEID", tableId);
-
                 bool busy = true;
-
-                using (SqlDataReader reader = destConnection.ReadDB(getTableStatusSql))
+                if (tableId != null)
                 {
-                    if (reader.Read())
+                    getTableStatusSql = getTableStatusSql.Replace("$TABLEID", tableId);
+                    
+                    using (SqlDataReader reader = destConnection.ReadDB(getTableStatusSql))
                     {
-                        busy = reader.GetInt32(0) == 1 ? true : false;
-                    }
-                }                
+                        if (reader.Read())
+                        {
+                            busy = reader.GetInt32(0) == 1;
+                        }
+                    }                
+                }
 
                 destConnection.Close();
 
