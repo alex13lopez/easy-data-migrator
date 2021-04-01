@@ -20,6 +20,10 @@ namespace ConectorSLIM4
 
             // We open connection to begin insert data
             destConnection.Open();
+
+            if (!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["BeforeInsertQuery"]))
+                destConnection.ModifyDB(ConfigurationManager.AppSettings["BeforeInsertQuery"]);
+
             foreach (TableMap tableMap in mapper.TableMaps)
             {
                 if (tableMap.DestinationTableBusy)
@@ -62,6 +66,11 @@ namespace ConectorSLIM4
                 destConnection.ModifyDB(ConfigurationManager.AppSettings["AfterInsertQuery"]);
 
             destConnection.Close();
+
+#if DEBUG
+            Console.WriteLine("Migration process ended");                      
+            Console.ReadKey();
+#endif
         }
     }
 }
