@@ -1,20 +1,24 @@
 ﻿using System;
 using System.Configuration;
 using System.Data;
-using ConectorSLIM4.modules;
+using EasyDataMigrator.modules;
 
-namespace ConectorSLIM4
+namespace EasyDataMigrator
 {
-    class ConectorSLIM
+    class EasyDataMigrator
     {
         static void Main(string[] args)
         {
             Mapper mapper = new();
-            DbConnector origConnection = new("DataDecConnectionString"), destConnection = new("SLIMConnectionString");
+            DbConnector origConnection = new("OriginConnection"), destConnection = new("DestinationConnection");
+
+            string OriginPattern = ConfigurationManager.AppSettings["SearchOriginPattern"];
+            string DestinationPattern = ConfigurationManager.AppSettings["SearchDestPattern"];
+            bool excludePatternFromMatch = ConfigurationManager.AppSettings["excludePatternFromMatch"] == "True";
 
             origConnection.Open();
             destConnection.Open();
-            mapper.TryAutoMapping(origConnection, destConnection, "SLIM_");
+            mapper.TryAutoMapping(origConnection, destConnection, OriginPattern, DestinationPattern, excludePatternFromMatch);
             origConnection.Close();
             destConnection.Close();
            

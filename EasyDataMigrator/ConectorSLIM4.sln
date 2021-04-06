@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.31105.61
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConectorSLIM4", "ConectorSLIM4.csproj", "{52B314B3-F818-408A-80CA-DBFB83A417F1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyDataMigrator", "EasyDataMigrator.csproj", "{52B314B3-F818-408A-80CA-DBFB83A417F1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

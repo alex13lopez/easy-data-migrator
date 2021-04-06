@@ -5,7 +5,7 @@ using System.Configuration;
 using System.Data;
 using System;
 
-namespace ConectorSLIM4.modules
+namespace EasyDataMigrator.modules
 {
     public class Mapper
     {
@@ -108,11 +108,11 @@ namespace ConectorSLIM4.modules
             return tMap;
         }
 
-        public bool IsDestTableBusy(TableMap tMap)
+        public static bool IsDestTableBusy(TableMap tMap)
         {
             if (!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["GetTableIdQuery"]) && !string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["GetDestTableStatus"]))
             {
-                DbConnector destConnection = new("SLIMConnectionString");
+                DbConnector destConnection = new("DestinationConnection");
                 string getTableIdSql = ConfigurationManager.AppSettings["GetTableIdQuery"];
                 string getTableStatusSql = ConfigurationManager.AppSettings["GetDestTableStatus"];
 

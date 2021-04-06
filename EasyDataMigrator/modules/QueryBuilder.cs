@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ConectorSLIM4.modules
+namespace EasyDataMigrator.modules
 {
     static class QueryBuilder
     {

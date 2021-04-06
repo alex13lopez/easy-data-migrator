@@ -2,7 +2,7 @@
 using System.Configuration;
 using System.IO;
 
-namespace ConectorSLIM4.modules
+namespace EasyDataMigrator.modules
 {
     public class Logger
     {
