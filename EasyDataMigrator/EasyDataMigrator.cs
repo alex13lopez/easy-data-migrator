@@ -15,6 +15,8 @@ namespace EasyDataMigrator
             string OriginPattern = ConfigurationManager.AppSettings["SearchOriginPattern"];
             string DestinationPattern = ConfigurationManager.AppSettings["SearchDestPattern"];
             bool excludePatternFromMatch = ConfigurationManager.AppSettings["excludePatternFromMatch"] == "True";
+            bool BeforeEachInsertQuery = !string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["BeforeEachInsertQuery"]);
+            bool AfterEachInsertQuery = !string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["AfterEachInsertQuery"]);
 
             origConnection.Open();
             destConnection.Open();
@@ -38,6 +40,14 @@ namespace EasyDataMigrator
                 {
                     Console.WriteLine($"Skipping table ${tableMap.ToTable} because it is currently busy");
                     continue;
+                }
+
+                // We execute (if any) the BeforeEachInsertQuery 
+                if (BeforeEachInsertQuery)
+                {
+                    origConnection.Open();
+                    origConnection.ModifyDB(ConfigurationManager.AppSettings["BeforeEachInsertQuery"]);
+                    origConnection.Close();
                 }
 
                 Console.WriteLine($"Inserting records from {tableMap.FromTable} to {tableMap.ToTable}.");                
@@ -69,6 +79,15 @@ namespace EasyDataMigrator
                     // We free used resources since we don't need them anymore
                     data.Dispose();
                 }
+
+                // We execute (if any) the AfterEachInsertQuery 
+                if (AfterEachInsertQuery)
+                {
+                    origConnection.Open();
+                    origConnection.ModifyDB(ConfigurationManager.AppSettings["AfterEachInsertQuery"]);
+                    origConnection.Close();
+                }
+
                 Console.WriteLine($"Inserted records from {tableMap.FromTable} to {tableMap.ToTable} successfully!");
             }
 
