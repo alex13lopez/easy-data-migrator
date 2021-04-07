@@ -1,6 +1,7 @@
-﻿using System;
+﻿using System;   
 using System.Configuration;
 using System.Data;
+using System.Data.SqlClient;
 using EasyDataMigrator.modules;
 
 namespace EasyDataMigrator
@@ -15,6 +16,8 @@ namespace EasyDataMigrator
             string OriginPattern = ConfigurationManager.AppSettings["SearchOriginPattern"];
             string DestinationPattern = ConfigurationManager.AppSettings["SearchDestPattern"];
             bool excludePatternFromMatch = ConfigurationManager.AppSettings["excludePatternFromMatch"] == "True";
+            bool BeforeEachInsertQuery = !string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["BeforeEachInsertQuery"]);
+            bool AfterEachInsertQuery = !string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["AfterEachInsertQuery"]);
 
             origConnection.Open();
             destConnection.Open();
@@ -40,18 +43,42 @@ namespace EasyDataMigrator
                     continue;
                 }
 
+                // We execute (if any) the BeforeEachInsertQuery 
+                if (BeforeEachInsertQuery)
+                {
+                    origConnection.Open();
+                    origConnection.ModifyDB(ConfigurationManager.AppSettings["BeforeEachInsertQuery"]);
+                    origConnection.Close();
+                }
+
                 Console.WriteLine($"Inserting records from {tableMap.FromTable} to {tableMap.ToTable}.");                
                 if (!tableMap.UseBulkCopy)
                 {
-                    string sqlDelete = QueryBuilder.Delete(tableMap);
-                    string sqlInsert = QueryBuilder.Insert(tableMap);
+                    try
+                    {
+                        string sqlDelete = QueryBuilder.Delete(tableMap);
+                        string sqlInsert = QueryBuilder.Insert(tableMap);
                 
-                    destConnection.BeginTransaction();
-                    destConnection.ModifyDB(sqlDelete, true);
-                    destConnection.ModifyDB(sqlInsert, true);              
-                    destConnection.CommitTransaction();
+                        destConnection.BeginTransaction();
+                        destConnection.ModifyDB(sqlDelete, true);
+                        int affectedRows = destConnection.ModifyDB(sqlInsert, true);
+
+                        if (affectedRows > 0)
+                            destConnection.CommitTransaction();
+                        else
+                            destConnection.RollBackTransaction();
+
+                    }catch (SqlException ex) when (ex.Number == -2) // The migration exceeded timeout
+                    {
+                        // First we mark the UseBulkCopy property to true
+                        tableMap.UseBulkCopy = true;
+
+                        // Secondly we rollback the changes
+                        destConnection.RollBackTransaction();                                                
+                    }
                 }
-                else
+
+                if (tableMap.UseBulkCopy)
                 {
                     DataTable data = new();
                     string sql = QueryBuilder.Select(tableMap);
@@ -69,6 +96,15 @@ namespace EasyDataMigrator
                     // We free used resources since we don't need them anymore
                     data.Dispose();
                 }
+
+                // We execute (if any) the AfterEachInsertQuery 
+                if (AfterEachInsertQuery)
+                {
+                    origConnection.Open();
+                    origConnection.ModifyDB(ConfigurationManager.AppSettings["AfterEachInsertQuery"]);
+                    origConnection.Close();
+                }
+
                 Console.WriteLine($"Inserted records from {tableMap.FromTable} to {tableMap.ToTable} successfully!");
             }
 
