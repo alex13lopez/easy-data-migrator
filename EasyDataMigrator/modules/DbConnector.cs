@@ -65,7 +65,7 @@ namespace EasyDataMigrator.modules
             }
 
             if (string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["MaxQueryTimeout"]))
-                CommandTimeout = 180; // By default we asign 3 minutes of timeout if no value specified
+                CommandTimeout = 60; // By default we asign 3 minutes of timeout if no value specified
             else
                 CommandTimeout = Convert.ToInt32(ConfigurationManager.AppSettings["MaxQueryTimeout"]);
 
