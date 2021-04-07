@@ -85,31 +85,29 @@ namespace EasyDataMigrator.modules
         public void RollBackTransaction(string transName = "DefaultTransaction") => _sqlTransaction.Rollback(transName);
 
         public void BulkCopy(DataTable data,TableMap tableMap)
-        {            
-            using (SqlBulkCopy bulkCopy = new(_sqlConnection, SqlBulkCopyOptions.KeepNulls, _sqlTransaction))
+        {
+            using SqlBulkCopy bulkCopy = new(_sqlConnection, SqlBulkCopyOptions.KeepNulls, _sqlTransaction);
+            int CommandTimeout;
+
+            if (string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["MaxBulkModeTimeout"]))
+                CommandTimeout = 300; // By default we asign 5 minutes of timeout if no value specified
+            else
+                CommandTimeout = Convert.ToInt32(ConfigurationManager.AppSettings["MaxBulkModeTimeout"]);
+
+
+            bulkCopy.DestinationTableName = tableMap.DestinationDataBase + ".dbo." + tableMap.ToTableName;
+            bulkCopy.BulkCopyTimeout = CommandTimeout;
+
+            tableMap.FieldMaps.ForEach(fieldMap => bulkCopy.ColumnMappings.Add(fieldMap.OriginField, fieldMap.DestinationField));
+
+            try
             {
-                int CommandTimeout;
-
-                if (string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["MaxBulkModeTimeout"]))
-                    CommandTimeout = 300; // By default we asign 5 minutes of timeout if no value specified
-                else
-                    CommandTimeout = Convert.ToInt32(ConfigurationManager.AppSettings["MaxBulkModeTimeout"]);
-
-
-                bulkCopy.DestinationTableName = tableMap.DestinationDataBase + ".dbo." + tableMap.ToTableName;
-                bulkCopy.BulkCopyTimeout = CommandTimeout; 
-
-                tableMap.FieldMaps.ForEach(fieldMap => bulkCopy.ColumnMappings.Add(fieldMap.OriginField, fieldMap.DestinationField));
-
-                try
-                {
-                    bulkCopy.WriteToServer(data);                   
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e.Message);
-                }
+                bulkCopy.WriteToServer(data);
             }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }            
         }
     }
 }

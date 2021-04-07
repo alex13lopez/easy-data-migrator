@@ -24,7 +24,7 @@ namespace EasyDataMigrator
             mapper.TryAutoMapping(origConnection, destConnection, OriginPattern, DestinationPattern, excludePatternFromMatch);
             origConnection.Close();
             destConnection.Close();
-           
+
             if (!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["BeforeInsertQuery"]))
             {
                 origConnection.Open();
@@ -35,6 +35,25 @@ namespace EasyDataMigrator
             // We open connection to begin insert data
             destConnection.Open();
 
+            MigrateTables(mapper, origConnection, destConnection, BeforeEachInsertQuery, AfterEachInsertQuery);
+
+            if (!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["AfterInsertQuery"]))
+            {
+                string sql = ConfigurationManager.AppSettings["AfterInsertQuery"].Replace("$TIMESTAMP", "'" + DateTime.Now.ToString("yyyyMMdd HHmmss") + "'");
+                destConnection.ModifyDB(sql);
+            }
+
+            // When we've finished all operations, we finally close the destination connection
+            destConnection.Close();
+
+#if DEBUG
+            Console.WriteLine("Migration process ended");
+            Console.ReadKey();
+#endif
+        }
+
+        private static void MigrateTables(Mapper mapper, DbConnector origConnection, DbConnector destConnection, bool BeforeEachInsertQuery, bool AfterEachInsertQuery)
+        {
             foreach (TableMap tableMap in mapper.TableMaps)
             {
                 if (tableMap.DestinationTableBusy)
@@ -51,7 +70,8 @@ namespace EasyDataMigrator
                     origConnection.Close();
                 }
 
-                Console.WriteLine($"Inserting records from {tableMap.FromTable} to {tableMap.ToTable}.");                
+                Console.WriteLine($"Inserting records from {tableMap.FromTable} to {tableMap.ToTable}.");
+
                 if (!tableMap.UseBulkCopy)
                 {
                     try
@@ -78,7 +98,7 @@ namespace EasyDataMigrator
                         destConnection.RollBackTransaction();
                     }
                 }
-                
+
                 if (tableMap.UseBulkCopy)
                 {
                     DataTable data = new();
@@ -107,21 +127,7 @@ namespace EasyDataMigrator
                 }
 
                 Console.WriteLine($"Inserted records from {tableMap.FromTable} to {tableMap.ToTable} successfully!");
-            }
-
-            if (!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["AfterInsertQuery"]))
-            {
-                string sql = ConfigurationManager.AppSettings["AfterInsertQuery"].Replace("$TIMESTAMP", "'" + DateTime.Now.ToString("yyyyMMdd HHmmss") + "'");
-                destConnection.ModifyDB(sql);
-            }
-
-            // When we've finished all operations, we finally close the destination connection
-            destConnection.Close();
-
-#if DEBUG
-            Console.WriteLine("Migration process ended");                      
-            Console.ReadKey();
-#endif
+            }           
         }
     }
 }
