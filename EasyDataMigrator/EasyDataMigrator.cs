@@ -1,4 +1,4 @@
-﻿using System;   
+﻿using System;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
@@ -58,7 +58,7 @@ namespace EasyDataMigrator
                     {
                         string sqlDelete = QueryBuilder.Delete(tableMap);
                         string sqlInsert = QueryBuilder.Insert(tableMap);
-                
+
                         destConnection.BeginTransaction();
                         destConnection.ModifyDB(sqlDelete, true);
                         int affectedRows = destConnection.ModifyDB(sqlInsert, true);
@@ -68,16 +68,17 @@ namespace EasyDataMigrator
                         else
                             destConnection.RollBackTransaction();
 
-                    }catch (SqlException ex) when (ex.Number == -2) // The migration exceeded timeout
+                    }
+                    catch (SqlException ex) when (ex.Number == -2) // The migration exceeded timeout
                     {
                         // First we mark the UseBulkCopy property to true
                         tableMap.UseBulkCopy = true;
 
                         // Secondly we rollback the changes
-                        destConnection.RollBackTransaction();                                                
+                        destConnection.RollBackTransaction();
                     }
                 }
-
+                
                 if (tableMap.UseBulkCopy)
                 {
                     DataTable data = new();
