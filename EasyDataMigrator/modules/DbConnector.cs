@@ -83,9 +83,6 @@ namespace EasyDataMigrator.modules
                 bulkCopy.BulkCopyTimeout = 360; // 6 minutes
 
                 tableMap.FieldMaps.ForEach(fieldMap => bulkCopy.ColumnMappings.Add(fieldMap.OriginField, fieldMap.DestinationField));
-
-                //var t = bulkCopy.ColumnMappings;
-                //Console.WriteLine(t);
                 
                 try
                 {
