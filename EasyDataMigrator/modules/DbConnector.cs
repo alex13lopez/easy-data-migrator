@@ -48,6 +48,7 @@ namespace EasyDataMigrator.modules
         {
             SqlCommand command;
             SqlDataAdapter adapter = new();
+            int CommandTimeout;
 
             if (transactionedQuery && _sqlTransaction != null)
             {
@@ -62,7 +63,14 @@ namespace EasyDataMigrator.modules
             {
                 command = new SqlCommand(sql, _sqlConnection);
             }
-            command.CommandTimeout = 360; // 6 minutes
+
+            if (string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["MaxQueryTimeout"]))
+                CommandTimeout = 300; // By default we asign 5 minuts of timeout if no value specified
+            else
+                CommandTimeout = Convert.ToInt32(ConfigurationManager.AppSettings["MaxQueryTimeout"]);
+
+
+            command.CommandTimeout = CommandTimeout;
             adapter.UpdateCommand = command;           
             adapter.UpdateCommand.ExecuteNonQuery();
         }
