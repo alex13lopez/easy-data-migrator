@@ -44,7 +44,7 @@ namespace EasyDataMigrator.modules
             return command.ExecuteReader();
         }
 
-        public void ModifyDB(string sql, bool transactionedQuery = true) // Modify data operations, by default we DO require transaction since we are modifying data on de DB and something could go wrong
+        public int ModifyDB(string sql, bool transactionedQuery = true) // Modify data operations, by default we DO require transaction since we are modifying data on de DB and something could go wrong
         {
             SqlCommand command;
             SqlDataAdapter adapter = new();
@@ -65,14 +65,15 @@ namespace EasyDataMigrator.modules
             }
 
             if (string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["MaxQueryTimeout"]))
-                CommandTimeout = 300; // By default we asign 5 minuts of timeout if no value specified
+                CommandTimeout = 180; // By default we asign 3 minutes of timeout if no value specified
             else
                 CommandTimeout = Convert.ToInt32(ConfigurationManager.AppSettings["MaxQueryTimeout"]);
 
 
             command.CommandTimeout = CommandTimeout;
             adapter.UpdateCommand = command;           
-            adapter.UpdateCommand.ExecuteNonQuery();
+
+            return adapter.UpdateCommand.ExecuteNonQuery();
         }
 
         public void Open() => _sqlConnection.Open();
@@ -87,14 +88,19 @@ namespace EasyDataMigrator.modules
         {            
             using (SqlBulkCopy bulkCopy = new(_sqlConnection, SqlBulkCopyOptions.KeepNulls, _sqlTransaction))
             {
+                int CommandTimeout;
+
+                if (string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["MaxBulkModeTimeout"]))
+                    CommandTimeout = 300; // By default we asign 5 minutes of timeout if no value specified
+                else
+                    CommandTimeout = Convert.ToInt32(ConfigurationManager.AppSettings["MaxBulkModeTimeout"]);
+
+
                 bulkCopy.DestinationTableName = tableMap.DestinationDataBase + ".dbo." + tableMap.ToTableName;
-                bulkCopy.BulkCopyTimeout = 360; // 6 minutes
+                bulkCopy.BulkCopyTimeout = CommandTimeout; 
 
                 tableMap.FieldMaps.ForEach(fieldMap => bulkCopy.ColumnMappings.Add(fieldMap.OriginField, fieldMap.DestinationField));
 
-                //var t = bulkCopy.ColumnMappings;
-                //Console.WriteLine(t);
-                
                 try
                 {
                     bulkCopy.WriteToServer(data);                   

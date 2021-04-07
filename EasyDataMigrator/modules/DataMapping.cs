@@ -27,7 +27,7 @@ namespace EasyDataMigrator.modules
         public string ToTable { get => _destinationTable ; private set => _destinationTable  = DestinationServer + "." + DestinationDataBase + ".dbo." + value; }
         public string FromTableName { get; private set; }
         public string ToTableName { get; private set; }        
-        public bool UseBulkCopy { get => _useBulkCopy; private set => _useBulkCopy = value; }
+        public bool UseBulkCopy { get => _useBulkCopy; set => _useBulkCopy = value; }
         public bool DestinationTableBusy { get; set; }
 
 

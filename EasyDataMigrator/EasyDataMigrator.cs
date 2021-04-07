@@ -1,6 +1,7 @@
-﻿using System;
+﻿using System;   
 using System.Configuration;
 using System.Data;
+using System.Data.SqlClient;
 using EasyDataMigrator.modules;
 
 namespace EasyDataMigrator
@@ -43,15 +44,31 @@ namespace EasyDataMigrator
                 Console.WriteLine($"Inserting records from {tableMap.FromTable} to {tableMap.ToTable}.");                
                 if (!tableMap.UseBulkCopy)
                 {
-                    string sqlDelete = QueryBuilder.Delete(tableMap);
-                    string sqlInsert = QueryBuilder.Insert(tableMap);
+                    try
+                    {
+                        string sqlDelete = QueryBuilder.Delete(tableMap);
+                        string sqlInsert = QueryBuilder.Insert(tableMap);
                 
-                    destConnection.BeginTransaction();
-                    destConnection.ModifyDB(sqlDelete, true);
-                    destConnection.ModifyDB(sqlInsert, true);              
-                    destConnection.CommitTransaction();
+                        destConnection.BeginTransaction();
+                        destConnection.ModifyDB(sqlDelete, true);
+                        int affectedRows = destConnection.ModifyDB(sqlInsert, true);
+
+                        if (affectedRows > 0)
+                            destConnection.CommitTransaction();
+                        else
+                            destConnection.RollBackTransaction();
+
+                    }catch (SqlException ex) when (ex.Number == -2) // The migration exceeded timeout
+                    {
+                        // First we mark the UseBulkCopy property to true
+                        tableMap.UseBulkCopy = true;
+
+                        // Secondly we rollback the changes
+                        destConnection.RollBackTransaction();                                                
+                    }
                 }
-                else
+
+                if (tableMap.UseBulkCopy)
                 {
                     DataTable data = new();
                     string sql = QueryBuilder.Select(tableMap);
