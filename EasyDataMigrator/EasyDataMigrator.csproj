@@ -3,7 +3,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net5.0</TargetFramework>
-    <Version>0.8.1.0</Version>
+    <Version>0.9.0.0</Version>
     <StartupObject>EasyDataMigrator.EasyDataMigrator</StartupObject>
     <PackageId>EasyDataMigrator</PackageId>
     <Authors>Alex López</Authors>

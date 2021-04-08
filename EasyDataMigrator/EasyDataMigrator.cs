@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
@@ -35,7 +36,7 @@ namespace EasyDataMigrator
             // We open connection to begin insert data
             destConnection.Open();
 
-            MigrateTables(mapper, origConnection, destConnection, BeforeEachInsertQuery, AfterEachInsertQuery);
+            BeginMigration(mapper, origConnection, destConnection, BeforeEachInsertQuery, AfterEachInsertQuery);
 
             if (!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["AfterInsertQuery"]))
             {
@@ -52,82 +53,125 @@ namespace EasyDataMigrator
 #endif
         }
 
-        private static void MigrateTables(Mapper mapper, DbConnector origConnection, DbConnector destConnection, bool BeforeEachInsertQuery, bool AfterEachInsertQuery)
+        private static void BeginMigration(Mapper mapper, DbConnector origConnection, DbConnector destConnection, bool BeforeEachInsertQuery, bool AfterEachInsertQuery)
         {
+            List<TableMap> failedMigrations = new();
+
+            // We try to migrate the tables
             foreach (TableMap tableMap in mapper.TableMaps)
             {
                 if (tableMap.DestinationTableBusy)
                 {
                     Console.WriteLine($"Skipping table ${tableMap.ToTable} because it is currently busy");
+                    failedMigrations.Add(tableMap);
                     continue;
                 }
 
-                // We execute (if any) the BeforeEachInsertQuery 
-                if (BeforeEachInsertQuery)
+                bool migFailed = MigrateTable(tableMap, origConnection, destConnection, BeforeEachInsertQuery, AfterEachInsertQuery);
+
+                if (migFailed)
+                    failedMigrations.Add(tableMap);                                                
+            }
+
+            // We retry (if any) failed migrations
+            int maxRetries = Convert.ToInt32(ConfigurationManager.AppSettings["RetryFailedMigrations"]);
+
+            foreach (TableMap failedMig in failedMigrations)
+            {
+                int retries = maxRetries;
+                while (maxRetries > 0)
                 {
-                    origConnection.Open();
-                    origConnection.ModifyDB(ConfigurationManager.AppSettings["BeforeEachInsertQuery"]);
-                    origConnection.Close();
+                    maxRetries--;
+
+                    bool migFailed = MigrateTable(failedMig, origConnection, destConnection, BeforeEachInsertQuery, AfterEachInsertQuery);
+
+                    if (!migFailed)
+                        break;
                 }
+            }
+        }
 
-                Console.WriteLine($"Inserting records from {tableMap.FromTable} to {tableMap.ToTable}.");
+        private static bool MigrateTable(TableMap tableMap, DbConnector origConnection, DbConnector destConnection, bool BeforeEachInsertQuery, bool AfterEachInsertQuery) 
+        {            
 
-                if (!tableMap.UseBulkCopy)
+            bool migrationFailed = false;
+
+            Console.WriteLine($"Inserting records from {tableMap.FromTable} to {tableMap.ToTable}.");
+
+            // We execute (if any) the BeforeEachInsertQuery 
+            if (BeforeEachInsertQuery)
+            {
+                origConnection.Open();
+                origConnection.ModifyDB(ConfigurationManager.AppSettings["BeforeEachInsertQuery"]);
+                origConnection.Close();
+            }
+
+            if (!tableMap.UseBulkCopy)
+            {
+                try
                 {
-                    try
-                    {
-                        string sqlDelete = QueryBuilder.Delete(tableMap);
-                        string sqlInsert = QueryBuilder.Insert(tableMap);
-
-                        destConnection.BeginTransaction();
-                        destConnection.ModifyDB(sqlDelete, true);
-                        int affectedRows = destConnection.ModifyDB(sqlInsert, true);
-
-                        if (affectedRows > 0)
-                            destConnection.CommitTransaction();
-                        else
-                            destConnection.RollBackTransaction();
-
-                    }
-                    catch (SqlException ex) when (ex.Number == -2) // The migration exceeded timeout
-                    {
-                        // First we mark the UseBulkCopy property to true
-                        tableMap.UseBulkCopy = true;
-
-                        // Secondly we rollback the changes
-                        destConnection.RollBackTransaction();
-                    }
-                }
-
-                if (tableMap.UseBulkCopy)
-                {
-                    DataTable data = new();
-                    string sql = QueryBuilder.Select(tableMap);
-
-                    origConnection.Open();
-                    data.Load(origConnection.ReadDB(sql));
-                    origConnection.Close();
+                    string sqlDelete = QueryBuilder.Delete(tableMap);
+                    string sqlInsert = QueryBuilder.Insert(tableMap);
 
                     destConnection.BeginTransaction();
-                    string sqlDelete = QueryBuilder.Delete(tableMap);
                     destConnection.ModifyDB(sqlDelete, true);
-                    destConnection.BulkCopy(data, tableMap);
-                    destConnection.CommitTransaction();
+                    int affectedRows = destConnection.ModifyDB(sqlInsert, true);
 
-                    // We free used resources since we don't need them anymore
-                    data.Dispose();
+                    if (affectedRows > 0)
+                        destConnection.CommitTransaction();
+                    else
+                        destConnection.RollBackTransaction();
+
                 }
-
-                // We execute (if any) the AfterEachInsertQuery 
-                if (AfterEachInsertQuery)
+                catch (SqlException ex) when (ex.Number == -2) // The migration exceeded timeout
                 {
-                    origConnection.Open();
-                    origConnection.ModifyDB(ConfigurationManager.AppSettings["AfterEachInsertQuery"]);
-                    origConnection.Close();
+                    // First we mark the UseBulkCopy property to true
+                    tableMap.UseBulkCopy = true;
+
+                    // Secondly we rollback the changes
+                    destConnection.RollBackTransaction();
+                }
+                catch (Exception ex)
+                {                    
+                    migrationFailed = true;
+                    Console.WriteLine(ex.Message);
                 }
 
+            }
+
+            if (tableMap.UseBulkCopy)
+            {
+                DataTable data = new();
+                string sql = QueryBuilder.Select(tableMap);
+
+                origConnection.Open();
+                data.Load(origConnection.ReadDB(sql));
+                origConnection.Close();
+
+                destConnection.BeginTransaction();
+                string sqlDelete = QueryBuilder.Delete(tableMap);
+                destConnection.ModifyDB(sqlDelete, true);
+                destConnection.BulkCopy(data, tableMap);
+                destConnection.CommitTransaction();
+
+                // We free used resources since we don't need them anymore
+                data.Dispose();
+            }
+
+            // We execute (if any) the AfterEachInsertQuery 
+            if (AfterEachInsertQuery && !migrationFailed)
+            {
+                origConnection.Open();
+                origConnection.ModifyDB(ConfigurationManager.AppSettings["AfterEachInsertQuery"]);
+                origConnection.Close();
+            }
+
+            if (!migrationFailed)
                 Console.WriteLine($"Inserted records from {tableMap.FromTable} to {tableMap.ToTable} successfully!");
-            }           
+            else
+                Console.WriteLine($"ERROR: Migration of {tableMap.FromTable} to {tableMap.ToTable} has failed!");
+
+            return migrationFailed;
         }
     }
 }
