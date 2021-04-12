@@ -32,7 +32,7 @@ namespace EasyDataMigrator
             if (!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["MapPrecisionThreshold"]))
                 precisionThreshold = Convert.ToDecimal(ConfigurationManager.AppSettings["MapPrecisionThreshold"]);
             else
-                precisionThreshold = 50; // By default, we want at least to be 51% succesful
+                precisionThreshold = 50; // By default, we want at least to be 50% succesful
 
             decimal totalPrecision = mapper.FieldMapPrecision > 0 ? (mapper.TableMapPrecision + mapper.FieldMapPrecision) / 2 : 0;
 
