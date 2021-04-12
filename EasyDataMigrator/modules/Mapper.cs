@@ -10,6 +10,9 @@ namespace EasyDataMigrator.modules
     public class Mapper
     {
         private List<TableMap> _tableMaps = new();
+        public decimal TableMapPrecision { get; private set; }
+        public decimal FieldMapPrecision { get; private set; }
+
 
         public List<TableMap> TableMaps { get => _tableMaps; private set => _tableMaps = value; }
 
@@ -40,21 +43,21 @@ namespace EasyDataMigrator.modules
                 destTable.Load(destinationReader);
 
 
-            CreateTableMaps(originTable,
-                            destTable,
-                            originConnection.ServerName,
-                            destinationConnection.ServerName,
-                            originConnection.DataBaseName,
-                            destinationConnection.DataBaseName,
-                            originPatterMatching,
-                            destinationPatternMatching,
-                            excludePatternsFromMatch
-                            );
+            TableMapPrecision = CreateTableMaps(originTable,
+                                                destTable,
+                                                originConnection.ServerName,
+                                                destinationConnection.ServerName,
+                                                originConnection.DataBaseName,
+                                                destinationConnection.DataBaseName,
+                                                originPatterMatching,
+                                                destinationPatternMatching,
+                                                excludePatternsFromMatch
+                                                );
 
-            CreateFieldMaps(originTable, destTable);                        
+            FieldMapPrecision = CreateFieldMaps(originTable, destTable);
         }
 
-        private float CreateTableMaps(DataTable originTable, DataTable destTable, string originServer, string destinationServer, string originDB, string destinationDB, string originPatterMatching = null, string destinationPatternMatching = null, bool excludePatternsFromMatch = true)
+        private decimal CreateTableMaps(DataTable originTable, DataTable destTable, string originServer, string destinationServer, string originDB, string destinationDB, string originPatterMatching = null, string destinationPatternMatching = null, bool excludePatternsFromMatch = true)
         {
             IEnumerable<string> origTables = originTable.AsEnumerable().Select(r => r.Field<string>("TableName")).Distinct();
             IEnumerable<string> destTables = destTable.AsEnumerable().Select(r => r.Field<string>("TableName")).Distinct();
@@ -62,10 +65,11 @@ namespace EasyDataMigrator.modules
             int matchedCount = 0, mapCount = 0;                        
             foreach (string oTableName in origTables.ToList())
             {
+                mapCount++;
+
                 foreach (string dTableName in destTables.ToList())
                 {
-                    string oTableNameF = oTableName, dTableNameF = dTableName;
-                    mapCount++;
+                    string oTableNameF = oTableName, dTableNameF = dTableName;                    
 
                     if (excludePatternsFromMatch)
                     {
@@ -84,9 +88,9 @@ namespace EasyDataMigrator.modules
                         _ = FindOrCreateTableMap(new TableMap(originServer, destinationServer, originDB, destinationDB, oTableName, dTableName, useBulkCopy));
                     }
                 }
-            }
+            }            
 
-            return mapCount > 0 ? matchedCount / mapCount : 0; // We return the success percentage
+            return mapCount > 0 ? Math.Round(((decimal)matchedCount / (decimal)mapCount), 2) * 100 : 0; // We return the success percentage
         }
 
         private TableMap FindOrCreateTableMap(TableMap tableMap)
@@ -104,9 +108,10 @@ namespace EasyDataMigrator.modules
         }
 
 
-        private void CreateFieldMaps(DataTable originTable, DataTable destTable)
+        private decimal CreateFieldMaps(DataTable originTable, DataTable destTable)
         {
-            
+            int matchedCount = 0, mapCount = 0;
+
             foreach (TableMap tableMap in _tableMaps)
             {
                 List<string> oFields = (from f in originTable.AsEnumerable()
@@ -118,11 +123,20 @@ namespace EasyDataMigrator.modules
                                         select f.Field<string>("ColumnName")).ToList();
 
                 foreach (string oField in oFields)
+                {
+                    mapCount++;
                     foreach (string dField in dFields)
+                    {                        
                         if (oField.ToLower() == dField.ToLower()) // We compare names case insensitive
+                        {
                             tableMap.AddFieldMap(new FieldMap(oField, dField));
+                            matchedCount++;
+                        }
+                    }
+                }
             }
-            
+
+            return mapCount > 0 ? Math.Round(((decimal)matchedCount / (decimal)mapCount), 2) * 100 : 0; // We return the success percentage
         }        
     }
 }
