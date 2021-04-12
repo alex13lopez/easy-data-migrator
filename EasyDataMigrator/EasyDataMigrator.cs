@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
+using System.Threading;
 using EasyDataMigrator.modules;
 
 namespace EasyDataMigrator
@@ -12,6 +13,7 @@ namespace EasyDataMigrator
         static void Main(string[] args)
         {
             Mapper mapper = new();
+            Logger logger = new();
             DbConnector origConnection = new("OriginConnection"), destConnection = new("DestinationConnection");
 
             string OriginPattern = ConfigurationManager.AppSettings["SearchOriginPattern"];
@@ -36,24 +38,25 @@ namespace EasyDataMigrator
             // We open connection to begin insert data
             destConnection.Open();
 
-            BeginMigration(mapper, origConnection, destConnection, BeforeEachInsertQuery, AfterEachInsertQuery);
+            BeginMigration(mapper, origConnection, destConnection, BeforeEachInsertQuery, AfterEachInsertQuery, logger);
 
             if (!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["AfterInsertQuery"]))
             {
-                string sql = ConfigurationManager.AppSettings["AfterInsertQuery"].Replace("$TIMESTAMP", "'" + DateTime.Now.ToString("yyyyMMdd HHmmss") + "'");
+                string sql = ConfigurationManager.AppSettings["AfterInsertQuery"].Replace("$TIMESTAMP", "'" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + "'");
                 destConnection.ModifyDB(sql);
             }
 
             // When we've finished all operations, we finally close the destination connection
             destConnection.Close();
 
+            logger.PrintNLog("Migration process ended");
+
 #if DEBUG
-            Console.WriteLine("Migration process ended");
             Console.ReadKey();
 #endif
         }
 
-        private static void BeginMigration(Mapper mapper, DbConnector origConnection, DbConnector destConnection, bool BeforeEachInsertQuery, bool AfterEachInsertQuery)
+        private static void BeginMigration(Mapper mapper, DbConnector origConnection, DbConnector destConnection, bool BeforeEachInsertQuery, bool AfterEachInsertQuery, Logger logger)
         {
             List<TableMap> failedMigrations = new();
 
@@ -62,12 +65,12 @@ namespace EasyDataMigrator
             {
                 if (tableMap.DestinationTableBusy)
                 {
-                    Console.WriteLine($"Skipping table ${tableMap.ToTable} because it is currently busy");
+                    logger.PrintNLog($"Skipping table {tableMap.ToTable} because it is currently busy", Logger.LogType.WARNING);
                     failedMigrations.Add(tableMap);
                     continue;
                 }
 
-                bool migFailed = MigrateTable(tableMap, origConnection, destConnection, BeforeEachInsertQuery, AfterEachInsertQuery);
+                bool migFailed = MigrateTable(tableMap, origConnection, destConnection, BeforeEachInsertQuery, AfterEachInsertQuery, logger);
 
                 if (migFailed)
                     failedMigrations.Add(tableMap);                                                
@@ -75,28 +78,51 @@ namespace EasyDataMigrator
 
             // We retry (if any) failed migrations
             int maxRetries = Convert.ToInt32(ConfigurationManager.AppSettings["RetryFailedMigrations"]);
+            int busyTablesWaitTime = Convert.ToInt32(ConfigurationManager.AppSettings["WaitTimeBusyTables"]);
 
             foreach (TableMap failedMig in failedMigrations)
             {
-                int retries = maxRetries;
-                while (maxRetries > 0)
+                bool retrySucceed = false;
+
+                logger.PrintNLog($"Retrying migration {failedMig.MapId}...");
+
+                int retryCount = 1;
+                while (retryCount <= maxRetries)
                 {
-                    maxRetries--;
+                    logger.Print($"Retry number: {retryCount}");
+                 
+                    if (failedMig.GetStatusUpdate())
+                    {
+                        bool migFailed = MigrateTable(failedMig, origConnection, destConnection, BeforeEachInsertQuery, AfterEachInsertQuery, logger);
+                        
+                        if (!migFailed)
+                        {
+                            logger.PrintNLog($"Failed migration {failedMig.MapId} has been succesfully migrated on retry number {retryCount}!");
+                            retrySucceed = true;
+                            break; // Log things
+                        }
+                    }
+                    else
+                    {
+                        logger.PrintNLog($"Table is still busy, waiting {busyTablesWaitTime} seconds before next retry.", Logger.LogType.WARNING);
+                        Thread.Sleep(busyTablesWaitTime);
+                    }
 
-                    bool migFailed = MigrateTable(failedMig, origConnection, destConnection, BeforeEachInsertQuery, AfterEachInsertQuery);
-
-                    if (!migFailed)
-                        break;
+                    retryCount++;
                 }
+
+                if (!retrySucceed)
+                    logger.PrintNLog($"Could not migrate {failedMig.MapId} fatal error!", Logger.LogType.CRITICAL);
+
             }
         }
 
-        private static bool MigrateTable(TableMap tableMap, DbConnector origConnection, DbConnector destConnection, bool BeforeEachInsertQuery, bool AfterEachInsertQuery) 
+        private static bool MigrateTable(TableMap tableMap, DbConnector origConnection, DbConnector destConnection, bool BeforeEachInsertQuery, bool AfterEachInsertQuery, Logger logger) 
         {            
 
             bool migrationFailed = false;
 
-            Console.WriteLine($"Inserting records from {tableMap.FromTable} to {tableMap.ToTable}.");
+            logger.PrintNLog($"Inserting records from {tableMap.FromTable} to {tableMap.ToTable}.");
 
             // We execute (if any) the BeforeEachInsertQuery 
             if (BeforeEachInsertQuery)
@@ -130,11 +156,14 @@ namespace EasyDataMigrator
 
                     // Secondly we rollback the changes
                     destConnection.RollBackTransaction();
+
+                    // Lastly we inform of what happened
+                    logger.PrintNLog($"Migration {tableMap.MapId} exceeded timeout so changing to Bulk Mode. You should consider adding {tableMap.FromTable} to 'UseBulkCopyTables' list.", Logger.LogType.WARNING);
                 }
                 catch (Exception ex)
                 {                    
                     migrationFailed = true;
-                    Console.WriteLine(ex.Message);
+                    logger.PrintNLog($"Ooops! Something went wrong for migration {tableMap.MapId}, skipping for now! See details below: {Environment.NewLine}" + ex.Message, Logger.LogType.ERROR);
                 }
 
             }
@@ -167,9 +196,7 @@ namespace EasyDataMigrator
             }
 
             if (!migrationFailed)
-                Console.WriteLine($"Inserted records from {tableMap.FromTable} to {tableMap.ToTable} successfully!");
-            else
-                Console.WriteLine($"ERROR: Migration of {tableMap.FromTable} to {tableMap.ToTable} has failed!");
+                logger.PrintNLog($"Inserted records from {tableMap.FromTable} to {tableMap.ToTable} successfully!");
 
             return migrationFailed;
         }

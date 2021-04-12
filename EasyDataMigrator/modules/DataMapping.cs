@@ -52,6 +52,10 @@ namespace EasyDataMigrator.modules
 
         public void AddFieldMap(FieldMap fieldMap) => _fieldMaps.Add(fieldMap);
 
+        internal bool GetStatusUpdate()
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public class FieldMap
