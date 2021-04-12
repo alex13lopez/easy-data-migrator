@@ -28,28 +28,38 @@ namespace EasyDataMigrator
             origConnection.Close();
             destConnection.Close();
 
-            if (!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["BeforeInsertQuery"]))
+            try
             {
-                origConnection.Open();
-                origConnection.ModifyDB(ConfigurationManager.AppSettings["BeforeInsertQuery"]);
-                origConnection.Close();
+                logger.PrintNLog("Migration process started.");
+
+                if (!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["BeforeInsertQuery"]))
+                {
+                    origConnection.Open();
+                    origConnection.ModifyDB(ConfigurationManager.AppSettings["BeforeInsertQuery"]);
+                    origConnection.Close();
+                }
+
+                // We open connection to begin insert data
+                destConnection.Open();
+
+                BeginMigration(mapper, origConnection, destConnection, BeforeEachInsertQuery, AfterEachInsertQuery, logger);
+
+                if (!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["AfterInsertQuery"]))
+                {
+                    string sql = ConfigurationManager.AppSettings["AfterInsertQuery"].Replace("$TIMESTAMP", "'" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + "'");
+                    destConnection.ModifyDB(sql);
+                }
+            }catch (SqlException ex) when (ex.Number == 208) // SQ_BADOBJECT --> The specified object cannot be found.
+            {
+                logger.PrintNLog($"No se encuentra el objeto especificado. No se puede ejecutar la consulta. Error de Base de Datos.", Logger.LogType.CRITICAL);
             }
 
-            // We open connection to begin insert data
-            destConnection.Open();
-
-            BeginMigration(mapper, origConnection, destConnection, BeforeEachInsertQuery, AfterEachInsertQuery, logger);
-
-            if (!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["AfterInsertQuery"]))
+            finally
             {
-                string sql = ConfigurationManager.AppSettings["AfterInsertQuery"].Replace("$TIMESTAMP", "'" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + "'");
-                destConnection.ModifyDB(sql);
+                // When we've finished all operations, we finally close the destination connection
+                destConnection.Close();
+                logger.PrintNLog("Migration process ended.");
             }
-
-            // When we've finished all operations, we finally close the destination connection
-            destConnection.Close();
-
-            logger.PrintNLog("Migration process ended");
 
 #if DEBUG
             Console.ReadKey();
@@ -65,7 +75,7 @@ namespace EasyDataMigrator
             {
                 if (tableMap.DestinationTableBusy)
                 {
-                    logger.PrintNLog($"Skipping table {tableMap.ToTable} because it is currently busy", Logger.LogType.WARNING);
+                    logger.PrintNLog($"Skipping table {tableMap.ToTable} because it is currently busy.", Logger.LogType.WARNING);
                     failedMigrations.Add(tableMap);
                     continue;
                 }
@@ -89,7 +99,7 @@ namespace EasyDataMigrator
                 int retryCount = 1;
                 while (retryCount <= maxRetries)
                 {
-                    logger.Print($"Retry number: {retryCount}");
+                    logger.Print($"Retry number: {retryCount}.");
                  
                     if (failedMig.UpdateStatus())
                     {

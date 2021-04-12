@@ -18,13 +18,13 @@ namespace EasyDataMigrator.modules
 
         public Logger() => _dateNow = System.DateTime.Now;
 
-        public void Log(string logMessage, LogType logType = LogType.INFO, string format = "-yyyyMMdd-hhmmsstt", string formatLines = "hh:mm:ss")
+        public void Log(string logMessage, LogType logType = LogType.INFO, string format = "_yyyyMMdd-hh.mm.ss.fff", string formatLines = "hh:mm:ss")
         {
             string fileName = ConfigurationManager.AppSettings["LogPath"] + "log" + _dateNow.ToString(format) + ".txt";
 
             try
             {
-                File.AppendAllText(fileName, "[" + logType.ToString() + "] -- [" + System.DateTime.Now.ToString(formatLines) + "] " + logMessage + Environment.NewLine);
+                File.AppendAllText(fileName, "[" + logType.ToString() + "] - [" + System.DateTime.Now.ToString(formatLines) + "] " + logMessage + Environment.NewLine);
             }
             catch (DirectoryNotFoundException)
             {
@@ -34,7 +34,7 @@ namespace EasyDataMigrator.modules
 
         }
 
-        public void Print(string message, LogType logType = LogType.INFO, string formatLines = "yyyyMMdd - hh:mm:ss")
+        public void Print(string message, LogType logType = LogType.INFO, string formatLines = "dd/MM/yy hh:mm:ss")
         {
             string messageInfo = "[" + System.DateTime.Now.ToString(formatLines) + "] ";
 
@@ -50,14 +50,14 @@ namespace EasyDataMigrator.modules
                     Console.ForegroundColor = ConsoleColor.Red;
                     break;
                 case LogType.CRITICAL:
-                    Console.ForegroundColor = ConsoleColor.Magenta;
+                    Console.ForegroundColor = ConsoleColor.DarkRed;
                     break;
                 default:
                     break;
             }
             
             // We print the message
-            Console.WriteLine("[" + logType.ToString() + "]" + " -- " + messageInfo + " " + message);
+            Console.WriteLine("[" + logType.ToString() + "]" + " - " + messageInfo + " " + message);
 
             // And reset the font color to default
             Console.ResetColor();

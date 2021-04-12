@@ -98,7 +98,7 @@ namespace EasyDataMigrator.modules
 
                 return busy;
             }
-            else if (string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["GetTableIdQuery"]) && string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["GetDestTableStatus"]))
+            else if (string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["GetTableIdQuery"]) || string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["GetDestTableStatus"]))
             {
                 // If there is no way of getting the table status we have no other choice but to assume it is not busy. This is dangerous and conflicts may arise but otherwise nothing will be migrated
                 DestinationTableBusy = false;
