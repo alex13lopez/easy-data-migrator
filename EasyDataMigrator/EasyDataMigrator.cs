@@ -21,6 +21,7 @@ namespace EasyDataMigrator
             bool excludePatternFromMatch = ConfigurationManager.AppSettings["excludePatternFromMatch"] == "True";
             bool BeforeEachInsertQuery = !string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["BeforeEachInsertQuery"]);
             bool AfterEachInsertQuery = !string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["AfterEachInsertQuery"]);
+            decimal precisionThreshold;
 
             origConnection.Open();
             destConnection.Open();
@@ -28,9 +29,26 @@ namespace EasyDataMigrator
             origConnection.Close();
             destConnection.Close();
 
+            if (!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["MapPrecisionThreshold"]))
+                precisionThreshold = Convert.ToDecimal(ConfigurationManager.AppSettings["MapPrecisionThreshold"]);
+            else
+                precisionThreshold = 50; // By default, we want at least to be 51% succesful
+
+            decimal totalPrecision = mapper.FieldMapPrecision > 0 ? (mapper.TableMapPrecision + mapper.FieldMapPrecision) / 2 : 0;
+
+            if (totalPrecision < precisionThreshold)
+            {
+                logger.PrintNLog($"Precision threshold of {precisionThreshold}% has not been reached! Aborting migration.", Logger.LogType.CRITICAL);
+#if DEBUG
+                Console.ReadKey();
+#endif
+                return;
+            }
+
             try
             {
                 logger.PrintNLog("Migration process started.");
+                logger.PrintNLog($"Mapping precision -> TABLES: {mapper.TableMapPrecision} | FIELDS: {mapper.FieldMapPrecision}");
 
                 if (!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["BeforeInsertQuery"]))
                 {
