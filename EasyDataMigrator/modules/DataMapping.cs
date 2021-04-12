@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
+using System.Data.SqlClient;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -28,7 +30,7 @@ namespace EasyDataMigrator.modules
         public string FromTableName { get; private set; }
         public string ToTableName { get; private set; }        
         public bool UseBulkCopy { get => _useBulkCopy; set => _useBulkCopy = value; }
-        public bool DestinationTableBusy { get; set; }
+        public bool DestinationTableBusy { get; private set; }
 
 
         public TableMap(string originServer, string destinationServer, string originDB, string destinationDB,string fromTable, string toTable, bool useBulkCopy = false, bool destinationTableBusy = false)
@@ -52,9 +54,60 @@ namespace EasyDataMigrator.modules
 
         public void AddFieldMap(FieldMap fieldMap) => _fieldMaps.Add(fieldMap);
 
-        internal bool GetStatusUpdate()
+        /// <summary>
+        /// Updates the Destination table status
+        /// </summary>
+        /// <returns>Destination table status</returns>
+        public bool UpdateStatus()
         {
-            throw new NotImplementedException();
+            if (!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["GetTableIdQuery"]) && !string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["GetDestTableStatus"]))
+            {
+                DbConnector destConnection = new("DestinationConnection");
+                string getTableIdSql = ConfigurationManager.AppSettings["GetTableIdQuery"];
+                string getTableStatusSql = ConfigurationManager.AppSettings["GetDestTableStatus"];
+
+                getTableIdSql = getTableIdSql.Replace("$TABLENAME", "'" + ToTableName + "'");
+
+                destConnection.Open();
+                string tableId = null;
+
+                using (SqlDataReader reader = destConnection.ReadDB(getTableIdSql))
+                {
+
+                    if (reader.Read())
+                    {
+                        tableId = reader.GetString(0);
+                    }
+                }
+
+                bool busy = true;
+                if (tableId != null)
+                {
+                    getTableStatusSql = getTableStatusSql.Replace("$TABLEID", tableId);
+
+                    using (SqlDataReader reader = destConnection.ReadDB(getTableStatusSql))
+                    {
+                        if (reader.Read())
+                            busy = reader.GetInt32(0) == 1;
+                    }
+                }
+
+                destConnection.Close();
+
+                DestinationTableBusy = busy;
+
+                return busy;
+            }
+            else if (string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["GetTableIdQuery"]) && string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["GetDestTableStatus"]))
+            {
+                // If there is no way of getting the table status we have no other choice but to assume it is not busy. This is dangerous and conflicts may arise but otherwise nothing will be migrated
+                DestinationTableBusy = false;
+                return false;
+            }
+
+            // If we cannot determine the status of the table, we'll asume it's busy
+            DestinationTableBusy = true;
+            return true; 
         }
     }
 

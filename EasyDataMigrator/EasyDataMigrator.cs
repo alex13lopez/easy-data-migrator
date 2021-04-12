@@ -91,7 +91,7 @@ namespace EasyDataMigrator
                 {
                     logger.Print($"Retry number: {retryCount}");
                  
-                    if (failedMig.GetStatusUpdate())
+                    if (failedMig.UpdateStatus())
                     {
                         bool migFailed = MigrateTable(failedMig, origConnection, destConnection, BeforeEachInsertQuery, AfterEachInsertQuery, logger);
                         
@@ -99,7 +99,7 @@ namespace EasyDataMigrator
                         {
                             logger.PrintNLog($"Failed migration {failedMig.MapId} has been succesfully migrated on retry number {retryCount}!");
                             retrySucceed = true;
-                            break; // Log things
+                            break;
                         }
                     }
                     else

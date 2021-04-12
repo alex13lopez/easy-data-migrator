@@ -97,60 +97,12 @@ namespace EasyDataMigrator.modules
             {
                 _tableMaps.Add(tableMap);
                 tMap = _tableMaps.Find(t => t.MapId == tableMap.MapId);
-            }
-
-            // We try to find the status of the destination table
-            if (!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["GetTableIdQuery"]) && !string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["GetDestTableStatus"]))
-            {
-                tMap.DestinationTableBusy = IsDestTableBusy(tMap);
-            }
+                _ = tMap.UpdateStatus();
+            }            
 
             return tMap;
         }
 
-        public static bool IsDestTableBusy(TableMap tMap)
-        {
-            if (!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["GetTableIdQuery"]) && !string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["GetDestTableStatus"]))
-            {
-                DbConnector destConnection = new("DestinationConnection");
-                string getTableIdSql = ConfigurationManager.AppSettings["GetTableIdQuery"];
-                string getTableStatusSql = ConfigurationManager.AppSettings["GetDestTableStatus"];
-
-                getTableIdSql = getTableIdSql.Replace("$TABLENAME", "'" + tMap.ToTableName + "'");
-
-                destConnection.Open();
-                string tableId = null;
-
-                using (SqlDataReader reader = destConnection.ReadDB(getTableIdSql))
-                {
-
-                    if (reader.Read())
-                    {
-                         tableId = reader.GetString(0);
-                    }                   
-                }
-
-                bool busy = true;
-                if (tableId != null)
-                {
-                    getTableStatusSql = getTableStatusSql.Replace("$TABLEID", tableId);
-                    
-                    using (SqlDataReader reader = destConnection.ReadDB(getTableStatusSql))
-                    {
-                        if (reader.Read())
-                        {
-                            busy = reader.GetInt32(0) == 1;
-                        }
-                    }                
-                }
-
-                destConnection.Close();
-
-                return busy;
-            }
-
-            return true; // If we cannot determine the status of the table, we'll asume it's busy to avoid conflicts
-        }
 
         private void CreateFieldMaps(DataTable originTable, DataTable destTable)
         {
