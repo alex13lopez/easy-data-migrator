@@ -41,6 +41,8 @@ namespace EasyDataMigrator.modules
                 command = new SqlCommand(sql, _sqlConnection);
             }
 
+            command.CommandTimeout = Convert.ToInt32(ConfigurationManager.AppSettings["MaxBulkModeTimeout"]); // Same max time as bulk mode, has no sense having less time than the max time the app is gonna wait
+
             return command.ExecuteReader();
         }
 

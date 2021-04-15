@@ -7,10 +7,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyDataMigrator", "EasyDat
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Alfa|Any CPU = Alfa|Any CPU
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{52B314B3-F818-408A-80CA-DBFB83A417F1}.Alfa|Any CPU.ActiveCfg = Alfa|Any CPU
+		{52B314B3-F818-408A-80CA-DBFB83A417F1}.Alfa|Any CPU.Build.0 = Alfa|Any CPU
 		{52B314B3-F818-408A-80CA-DBFB83A417F1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{52B314B3-F818-408A-80CA-DBFB83A417F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{52B314B3-F818-408A-80CA-DBFB83A417F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
