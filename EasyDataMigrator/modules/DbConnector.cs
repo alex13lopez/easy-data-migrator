@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
@@ -11,9 +12,9 @@ namespace EasyDataMigrator.modules
         private SqlTransaction _sqlTransaction;
 
         public string ServerName { get; private set; }
-        public string DataBaseName { get; private set; }     
-        
+        public string DataBaseName { get; private set; }             
         public SqlConnection SqlConnection { get => _sqlConnection; }
+        public List<Query> CustomQueries { get; private set; }
 
         public DbConnector(string ConnectionStringKey) //Conexión a BD SQL Server
         {
@@ -21,7 +22,8 @@ namespace EasyDataMigrator.modules
             _sqlConnection = new SqlConnection(connectionString);
             ServerName = _sqlConnection.DataSource;
             DataBaseName = _sqlConnection.Database;
-        }
+            LoadQueries();
+        }        
 
         public SqlDataReader ReadDB(string sql, bool transactionedQuery = false) // Reading data operations, by default we do NOT require transaction since we are not modifying data on de DB
         {
@@ -110,6 +112,11 @@ namespace EasyDataMigrator.modules
             {
                 Console.WriteLine(e.Message);
             }            
+        }
+
+        private void LoadQueries()
+        {
+            throw new NotImplementedException();
         }
     }
 }

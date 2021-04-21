@@ -106,7 +106,7 @@ namespace EasyDataMigrator
 
             // We retry (if any) failed migrations
             int maxRetries = Convert.ToInt32(ConfigurationManager.AppSettings["RetryFailedMigrations"]);
-            int busyTablesWaitTime = Convert.ToInt32(ConfigurationManager.AppSettings["WaitTimeBusyTables"]);
+            TimeSpan busyTablesWaitTime = new(0, 0, Convert.ToInt32(ConfigurationManager.AppSettings["WaitTimeBusyTables"]));
 
             foreach (TableMap failedMig in failedMigrations)
             {
