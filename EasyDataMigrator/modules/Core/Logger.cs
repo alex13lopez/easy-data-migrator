@@ -2,7 +2,7 @@
 using System.Configuration;
 using System.IO;
 
-namespace EasyDataMigrator.modules
+namespace EasyDataMigrator.Modules.Core
 {
     public class Logger
     {

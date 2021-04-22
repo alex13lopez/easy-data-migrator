@@ -4,7 +4,8 @@ using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
 using System.Threading;
-using EasyDataMigrator.modules;
+using EasyDataMigrator.Modules.Core;
+using EasyDataMigrator.Modules.Configuration;
 
 namespace EasyDataMigrator
 {
@@ -14,7 +15,10 @@ namespace EasyDataMigrator
         {
             Mapper mapper = new();
             Logger logger = new();
-            DbConnector origConnection = new("OriginConnection"), destConnection = new("DestinationConnection");
+
+            Variables varsCollection = CustomVariablesConfig.GetConfig().Variables;
+
+            DbConnector origConnection = new("OriginConnection", ref varsCollection), destConnection = new("DestinationConnection", ref varsCollection);
 
             string OriginPattern = ConfigurationManager.AppSettings["SearchOriginPattern"];
             string DestinationPattern = ConfigurationManager.AppSettings["SearchDestPattern"];

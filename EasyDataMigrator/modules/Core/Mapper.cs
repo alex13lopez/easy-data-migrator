@@ -5,7 +5,7 @@ using System.Configuration;
 using System.Data;
 using System;
 
-namespace EasyDataMigrator.modules
+namespace EasyDataMigrator.Modules.Core
 {
     public class Mapper
     {

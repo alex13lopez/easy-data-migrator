@@ -1,5 +1,5 @@
 ﻿
-namespace EasyDataMigrator.modules
+namespace EasyDataMigrator.Modules.Core
 {    
 
     public class Query
