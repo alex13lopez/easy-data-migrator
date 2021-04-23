@@ -4,14 +4,14 @@ using System.Configuration;
 
 namespace EasyDataMigrator.Modules.Configuration
 {
-    [ConfigurationCollection(typeof(Variable), AddItemName = "Variable", CollectionType = ConfigurationElementCollectionType.BasicMap)]
-    public class Variables : ConfigurationElementCollection
+    [ConfigurationCollection(typeof(Query), AddItemName = "Query", CollectionType = ConfigurationElementCollectionType.BasicMap)]
+    public class Queries : ConfigurationElementCollection
     {
-        public Variable this[int index]
+        public Query this[int index]
         {
             get
             {
-                return BaseGet(index) as Variable;
+                return BaseGet(index) as Query;
             }
 
             set
@@ -23,9 +23,9 @@ namespace EasyDataMigrator.Modules.Configuration
             }
         }
 
-        public new Variable this[string responseString]
+        public new Query this[string responseString]
         {
-            get => (Variable)BaseGet(responseString);
+            get => (Query)BaseGet(responseString);
             set
             {
                 if (BaseGet(responseString) != null)
@@ -36,16 +36,17 @@ namespace EasyDataMigrator.Modules.Configuration
             }
         }
 
-        protected override ConfigurationElement CreateNewElement() => new Variable();
+        protected override ConfigurationElement CreateNewElement() => new Query();
 
         protected override ConfigurationElement CreateNewElement(string elementName)
         {
-            return new Variable(elementName);
+            return new Query(elementName);
         }
 
         protected override object GetElementKey(ConfigurationElement element)
         {
-            return ((Variable)element).Name;
+            return ((Query)element).ID;
         }
+
     }
 }

@@ -16,8 +16,6 @@ namespace EasyDataMigrator.Modules.Configuration
         {
             get
             {
-                //object o = this[nameof(Variables)];
-                //return o as Variables;
                 return (Variables)this[nameof(Variables)];
             }
         }      

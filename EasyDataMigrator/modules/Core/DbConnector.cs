@@ -11,27 +11,35 @@ namespace EasyDataMigrator.Modules.Core
     {
         private readonly SqlConnection _sqlConnection;
         private SqlTransaction _sqlTransaction;
+        private Query.QueryConnection _connectionType;       
 
         public string ServerName { get; private set; }
         public string DataBaseName { get; private set; }             
         public SqlConnection SqlConnection { get => _sqlConnection; }
-        public List<Query> CustomQueries { get; private set; }
+        public List<Query> Queries { get; private set; }
 
-        public DbConnector(string ConnectionStringKey, ref Variables varsCollection) //Conexión a BD SQL Server
+        private void SetConnectionType(string ConnectionStringKey)
         {
-            string connectionString = ConfigurationManager.ConnectionStrings[ConnectionStringKey].ConnectionString;
-            _sqlConnection = new SqlConnection(connectionString);
-            ServerName = _sqlConnection.DataSource;
-            DataBaseName = _sqlConnection.Database;
-            LoadQueries(ref varsCollection);
+            switch (ConnectionStringKey)
+            {
+                case "OriginConnection":
+                    _connectionType = Query.QueryConnection.OriginConnection;
+                    break;
+                case "DestinationConnection":
+                    _connectionType = Query.QueryConnection.DestinationConnection;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(ConnectionStringKey, "Non valid connection string name");
+            }
         }
 
-        public DbConnector(string ConnectionStringKey) //Conexión a BD SQL Server
+        public DbConnector(string ConnectionStringKey) // Conexión a BD SQL Server
         {
             string connectionString = ConfigurationManager.ConnectionStrings[ConnectionStringKey].ConnectionString;
             _sqlConnection = new SqlConnection(connectionString);
             ServerName = _sqlConnection.DataSource;
-            DataBaseName = _sqlConnection.Database;
+            DataBaseName = _sqlConnection.Database;            
+            SetConnectionType(ConnectionStringKey);
             LoadQueries();
         }
         
@@ -124,15 +132,16 @@ namespace EasyDataMigrator.Modules.Core
             }            
         }
 
-        private void LoadQueries(ref Variables varsCollection)
-        {
-            throw new NotImplementedException();
-        }
-
         private void LoadQueries()
         {
-            throw new NotImplementedException();
-        }
+            Queries = new List<Query>();            
+            Queries queries = CustomQueriesConfig.GetConfig().Queries;
 
+            foreach (Query query in queries)
+            {
+                if (query.Connection == _connectionType)
+                    Queries.Add(query);
+            }
+        }
     }
 }

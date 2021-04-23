@@ -16,9 +16,8 @@ namespace EasyDataMigrator
             Mapper mapper = new();
             Logger logger = new();
 
-            Variables varsCollection = CustomVariablesConfig.GetConfig().Variables;
-
-            DbConnector origConnection = new("OriginConnection", ref varsCollection), destConnection = new("DestinationConnection", ref varsCollection);
+            Variables variables = CustomVariablesConfig.GetConfig().Variables;
+            DbConnector origConnection = new("OriginConnection"), destConnection = new("DestinationConnection");
 
             string OriginPattern = ConfigurationManager.AppSettings["SearchOriginPattern"];
             string DestinationPattern = ConfigurationManager.AppSettings["SearchDestPattern"];
