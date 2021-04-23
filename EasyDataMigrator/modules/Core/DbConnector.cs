@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
+using EasyDataMigrator.Modules.Configuration;
 
 namespace EasyDataMigrator.Modules.Core
 {
@@ -16,13 +17,13 @@ namespace EasyDataMigrator.Modules.Core
         public SqlConnection SqlConnection { get => _sqlConnection; }
         public List<Query> CustomQueries { get; private set; }
 
-        public DbConnector(string ConnectionStringKey, ref Configuration.Variables varsCollection) //Conexión a BD SQL Server
+        public DbConnector(string ConnectionStringKey, ref Variables varsCollection) //Conexión a BD SQL Server
         {
             string connectionString = ConfigurationManager.ConnectionStrings[ConnectionStringKey].ConnectionString;
             _sqlConnection = new SqlConnection(connectionString);
             ServerName = _sqlConnection.DataSource;
             DataBaseName = _sqlConnection.Database;
-            //LoadQueries();
+            LoadQueries(ref varsCollection);
         }
 
         public DbConnector(string ConnectionStringKey) //Conexión a BD SQL Server
@@ -31,9 +32,9 @@ namespace EasyDataMigrator.Modules.Core
             _sqlConnection = new SqlConnection(connectionString);
             ServerName = _sqlConnection.DataSource;
             DataBaseName = _sqlConnection.Database;
-            //LoadQueries();
+            LoadQueries();
         }
-
+        
         public SqlDataReader ReadDB(string sql, bool transactionedQuery = false) // Reading data operations, by default we do NOT require transaction since we are not modifying data on de DB
         {
             SqlCommand command;
@@ -123,9 +124,15 @@ namespace EasyDataMigrator.Modules.Core
             }            
         }
 
+        private void LoadQueries(ref Variables varsCollection)
+        {
+            throw new NotImplementedException();
+        }
+
         private void LoadQueries()
         {
             throw new NotImplementedException();
         }
+
     }
 }

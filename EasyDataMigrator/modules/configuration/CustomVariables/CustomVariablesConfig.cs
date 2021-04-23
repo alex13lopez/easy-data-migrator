@@ -7,18 +7,19 @@ namespace EasyDataMigrator.Modules.Configuration
     {
         public static CustomVariablesConfig GetConfig()
         {
-            return (CustomVariablesConfig)System.Configuration.ConfigurationManager.GetSection("CustomVariables") ?? new CustomVariablesConfig();
+            return (CustomVariablesConfig)ConfigurationManager.GetSection("CustomVariables") ?? new CustomVariablesConfig();
         }
 
-        [System.Configuration.ConfigurationProperty("Variables")]
+        [ConfigurationProperty("Variables")]
         [ConfigurationCollection(typeof(Variables), AddItemName = "Variable")]
         public Variables Variables
         {
             get
             {
-                object o = this["Variables"];
-                return o as Variables;
+                //object o = this[nameof(Variables)];
+                //return o as Variables;
+                return (Variables)this[nameof(Variables)];
             }
-        }
+        }      
     }
 }

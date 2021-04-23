@@ -4,6 +4,7 @@ using System.Configuration;
 
 namespace EasyDataMigrator.Modules.Configuration
 {
+    [ConfigurationCollection(typeof(Variable), AddItemName = "Variable", CollectionType = ConfigurationElementCollectionType.BasicMap)]
     public class Variables : ConfigurationElementCollection
     {
         public Variable this[int index]
