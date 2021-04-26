@@ -66,6 +66,28 @@ namespace EasyDataMigrator.Modules.Core
             return command.ExecuteReader();
         }
 
+        public string GetFirst(string sql, int column = 0, bool transactionedQuery = false)
+        {
+            using (SqlDataReader dataR = ReadDB(sql, transactionedQuery))
+            {
+                if (dataR.Read())
+                    return dataR.GetString(column);
+            }
+
+            return null;
+        }
+
+        public string GetFirst(string sql, string columnName, bool transactionedQuery = false)
+        {
+            using (SqlDataReader dataR = ReadDB(sql, transactionedQuery))
+            {
+                if (dataR.Read())
+                    return dataR.GetString(columnName);
+            }
+
+            return null;
+        }
+
         public int ModifyDB(string sql, bool transactionedQuery = true) // Modify data operations, by default we DO require transaction since we are modifying data on de DB and something could go wrong
         {
             SqlCommand command;

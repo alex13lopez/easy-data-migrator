@@ -35,19 +35,38 @@ namespace EasyDataMigrator.Modules.Configuration
             }
         }
 
+        public dynamic TrueValue
+        {
+            get; set;
+        }
+
         [ConfigurationProperty("type",
             DefaultValue = "string",
             IsRequired = true)]
-        public string Type
+        protected string _type
         {
             get
             {
-                return this["type"] as string;
+                return (string)this["type"];
             }
+        }
 
-            set
+        public Type Type
+        {
+            get
             {
-                this["type"] = value;
+                Type type = _type switch
+                {
+                    "int" => typeof(int),
+                    "bigint" => typeof(long),
+                    "long" => typeof(long),
+                    "float" => typeof(float),
+                    "decimal" => typeof(decimal),
+                    "money" => typeof(decimal),
+                    _ => typeof(string),// If we do not recognize the type we return string by default
+                };
+
+                return type;
             }
         }
 

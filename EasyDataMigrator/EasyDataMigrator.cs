@@ -6,6 +6,7 @@ using System.Data.SqlClient;
 using System.Threading;
 using EasyDataMigrator.Modules.Core;
 using EasyDataMigrator.Modules.Configuration;
+using System.Linq;
 
 namespace EasyDataMigrator
 {
@@ -22,8 +23,6 @@ namespace EasyDataMigrator
             string OriginPattern = ConfigurationManager.AppSettings["SearchOriginPattern"];
             string DestinationPattern = ConfigurationManager.AppSettings["SearchDestPattern"];
             bool excludePatternFromMatch = ConfigurationManager.AppSettings["excludePatternFromMatch"] == "True";
-            bool BeforeEachInsertQuery = !string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["BeforeEachInsertQuery"]);
-            bool AfterEachInsertQuery = !string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["AfterEachInsertQuery"]);
             decimal precisionThreshold;
 
             origConnection.Open();
@@ -53,24 +52,65 @@ namespace EasyDataMigrator
                 logger.PrintNLog("Migration process started.");
                 logger.PrintNLog($"Mapping precision -> TABLES: {mapper.TableMapPrecision} | FIELDS: {mapper.FieldMapPrecision}");
 
-                if (!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["BeforeInsertQuery"]))
+                // Before Migration queries in Origin connection
+                if (origConnection.Queries.Count > 0)
                 {
                     origConnection.Open();
-                    origConnection.ModifyDB(ConfigurationManager.AppSettings["BeforeInsertQuery"]);
+
+                    // First we obtain the "Read" type queries because we might need their data for execution queries later
+                    ExecuteQueries(ref variables, origConnection, Query.QueryType.Read, Query.QueryExecutionTime.BeforeMigration);
+                    ExecuteQueries(ref variables, origConnection, Query.QueryType.Execute, Query.QueryExecutionTime.BeforeMigration);
+
                     origConnection.Close();
+
+                }
+
+                // Before Migration queries in Destination connection
+                if (destConnection.Queries.Count > 0)
+                {
+                    destConnection.Open();
+
+                    // First we obtain the "Read" type queries because we might need their data for execution queries later
+                    ExecuteQueries(ref variables, destConnection, Query.QueryType.Read, Query.QueryExecutionTime.BeforeMigration);
+                    ExecuteQueries(ref variables, destConnection, Query.QueryType.Execute, Query.QueryExecutionTime.BeforeMigration);
+
+                    destConnection.Close();
+
                 }
 
                 // We open connection to begin insert data
                 destConnection.Open();
 
-                BeginMigration(mapper, origConnection, destConnection, BeforeEachInsertQuery, AfterEachInsertQuery, logger);
+                BeginMigration(mapper, origConnection, destConnection, logger);
 
-                if (!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["AfterInsertQuery"]))
+                //After Migration queries in Origin connection
+                if (origConnection.Queries.Count > 0)
                 {
-                    string sql = ConfigurationManager.AppSettings["AfterInsertQuery"].Replace("$TIMESTAMP", "'" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + "'");
-                    destConnection.ModifyDB(sql);
+                    origConnection.Open();
+
+                    // First we obtain the "Read" type queries because we might need their data for execution queries later
+                    ExecuteQueries(ref variables, origConnection, Query.QueryType.Read, Query.QueryExecutionTime.AfterMigration);
+                    ExecuteQueries(ref variables, origConnection, Query.QueryType.Execute, Query.QueryExecutionTime.AfterMigration);
+
+                    origConnection.Close();
+
                 }
-            }catch (SqlException ex) when (ex.Number == 208) // SQ_BADOBJECT --> The specified object cannot be found.
+
+                // After Migration queries in Destination connection
+                if (destConnection.Queries.Count > 0)
+                {
+                    destConnection.Open();
+
+                    // First we obtain the "Read" type queries because we might need their data for execution queries later
+                    ExecuteQueries(ref variables, destConnection, Query.QueryType.Read, Query.QueryExecutionTime.AfterMigration);
+                    ExecuteQueries(ref variables, destConnection, Query.QueryType.Execute, Query.QueryExecutionTime.AfterMigration);
+
+                    destConnection.Close();
+
+                }
+
+            }
+            catch (SqlException ex) when (ex.Number == 208) // SQ_BADOBJECT --> The specified object cannot be found.
             {
                 logger.PrintNLog($"No se encuentra el objeto especificado. No se puede ejecutar la consulta. Error de Base de Datos.", Logger.LogType.CRITICAL);
             }
@@ -87,7 +127,66 @@ namespace EasyDataMigrator
 #endif
         }
 
-        private static void BeginMigration(Mapper mapper, DbConnector origConnection, DbConnector destConnection, bool BeforeEachInsertQuery, bool AfterEachInsertQuery, Logger logger)
+        private static int ExecuteQueries(ref Variables variables, DbConnector connection, Query.QueryType queryType, Query.QueryExecutionTime executionTime)
+        {
+            int totalAffectedRows = 0;
+
+            List<Query> queries = connection.Queries.FindAll(query => query.ExecutionTime == executionTime && query.Type == queryType);
+
+            if (queries.Count == 0)
+                return 0;
+
+            // We order by ExecutionOrder to avoid needed variables beeing empty
+            queries = (from q in queries
+                      orderby q.ExecutionOrder ascending
+                      select q).ToList();
+
+            foreach (Query query in queries)
+            {
+                int affectedRows = 0;
+
+                if (query.Sql.Contains("$")) // We determine if it is a parametrized query or not
+                {
+                    // We inject user-defined variables                        
+                    variables.ForEach(
+                        v =>
+                        {
+                            if (v.Type == typeof(string))
+                            {
+                                query.Sql = query.Sql.Remove('$').Replace(v.Name, "'" + v.Value + "'");
+                            }
+                            else
+                            {
+                                query.Sql = query.Sql.Remove('$').Replace(v.Name, v.TrueValue);
+                            }
+                        }
+                        );
+                }
+
+                if (!string.IsNullOrWhiteSpace(query.StoreIn) && query.Type == Query.QueryType.Read)
+                {
+                    Variable result = variables.Find(v => v.Name == query.StoreIn.Replace("$", ""));
+
+                    if (connection.SqlConnection.State != ConnectionState.Open)
+                        connection.Open();
+
+                    result.Value = connection.GetFirst(query.Sql);
+                    result.TrueValue = Convert.ChangeType(result.Value, result.Type);
+                }
+                else if (query.Type == Query.QueryType.Execute)
+                {
+                    if (connection.SqlConnection.State != ConnectionState.Open)
+                        connection.Open();
+
+                    affectedRows = connection.ModifyDB(query.Sql);
+                    totalAffectedRows += affectedRows;
+                }
+            }
+
+            return totalAffectedRows;
+        }
+
+        private static void BeginMigration(Mapper mapper, DbConnector origConnection, DbConnector destConnection, Logger logger)
         {
             List<TableMap> failedMigrations = new();
 
@@ -101,7 +200,7 @@ namespace EasyDataMigrator
                     continue;
                 }
 
-                bool migFailed = MigrateTable(tableMap, origConnection, destConnection, BeforeEachInsertQuery, AfterEachInsertQuery, logger);
+                bool migFailed = MigrateTable(tableMap, origConnection, destConnection, logger);
 
                 if (migFailed)
                     failedMigrations.Add(tableMap);                                                
@@ -124,7 +223,7 @@ namespace EasyDataMigrator
                  
                     if (failedMig.UpdateStatus())
                     {
-                        bool migFailed = MigrateTable(failedMig, origConnection, destConnection, BeforeEachInsertQuery, AfterEachInsertQuery, logger);
+                        bool migFailed = MigrateTable(failedMig, origConnection, destConnection, logger);
                         
                         if (!migFailed)
                         {
@@ -148,7 +247,7 @@ namespace EasyDataMigrator
             }
         }
 
-        private static bool MigrateTable(TableMap tableMap, DbConnector origConnection, DbConnector destConnection, bool BeforeEachInsertQuery, bool AfterEachInsertQuery, Logger logger) 
+        private static bool MigrateTable(TableMap tableMap, DbConnector origConnection, DbConnector destConnection, Logger logger) 
         {            
 
             bool migrationFailed = false;
@@ -156,12 +255,12 @@ namespace EasyDataMigrator
             logger.PrintNLog($"Inserting records from {tableMap.FromTable} to {tableMap.ToTable}.");
 
             // We execute (if any) the BeforeEachInsertQuery 
-            if (BeforeEachInsertQuery)
-            {
-                origConnection.Open();
-                origConnection.ModifyDB(ConfigurationManager.AppSettings["BeforeEachInsertQuery"]);
-                origConnection.Close();
-            }
+            //if (BeforeEachInsertQuery)
+            //{
+            //    origConnection.Open();
+            //    origConnection.ModifyDB(ConfigurationManager.AppSettings["BeforeEachInsertQuery"]);
+            //    origConnection.Close();
+            //}
 
             if (!tableMap.UseBulkCopy)
             {
@@ -219,12 +318,12 @@ namespace EasyDataMigrator
             }
 
             // We execute (if any) the AfterEachInsertQuery 
-            if (AfterEachInsertQuery && !migrationFailed)
-            {
-                origConnection.Open();
-                origConnection.ModifyDB(ConfigurationManager.AppSettings["AfterEachInsertQuery"]);
-                origConnection.Close();
-            }
+            //if (AfterEachInsertQuery && !migrationFailed)
+            //{
+            //    origConnection.Open();
+            //    origConnection.ModifyDB(ConfigurationManager.AppSettings["AfterEachInsertQuery"]);
+            //    origConnection.Close();
+            //}
 
             if (!migrationFailed)
                 logger.PrintNLog($"Inserted records from {tableMap.FromTable} to {tableMap.ToTable} successfully!");

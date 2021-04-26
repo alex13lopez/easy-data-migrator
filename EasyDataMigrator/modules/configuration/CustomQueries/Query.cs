@@ -1,4 +1,5 @@
-﻿using System.Configuration;
+﻿using System;
+using System.Configuration;
 
 namespace EasyDataMigrator.Modules.Configuration
 {    
@@ -53,6 +54,11 @@ namespace EasyDataMigrator.Modules.Configuration
             {
                 return this["sqlCommand"] as string;
             }
+
+            set
+            {
+                this["sqlCommand"] = value;
+            }
         }
 
         [ConfigurationProperty("type", IsRequired = true, DefaultValue = QueryType.Execute)]
@@ -65,7 +71,13 @@ namespace EasyDataMigrator.Modules.Configuration
         }
 
         [ConfigurationProperty("executionTime", IsRequired = true)]
-        public QueryExecutionTime ExecutionTime { get; set; }
+        public QueryExecutionTime ExecutionTime 
+        {
+            get
+            {
+                return (QueryExecutionTime)this["executionTime"];
+            }
+        }
 
         [ConfigurationProperty("id", IsRequired = true, IsKey = true)]
         public string ID 
@@ -87,6 +99,16 @@ namespace EasyDataMigrator.Modules.Configuration
             get
             {
                 return this["storeIn"] as string;
+            }
+        }
+
+        [ConfigurationProperty("executionOrder", IsRequired = true, DefaultValue = 0)]
+        public int ExecutionOrder
+        {
+            get
+            {
+                string value = this["executionOrder"] as string;
+                return string.IsNullOrWhiteSpace(value) ? 0 : Convert.ToInt32(value);
             }
         }
     }
