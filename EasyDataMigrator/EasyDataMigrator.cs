@@ -58,8 +58,8 @@ namespace EasyDataMigrator
                     origConnection.Open();
 
                     // First we obtain the "Read" type queries because we might need their data for execution queries later
-                    ExecuteQueries(ref variables, origConnection, Query.QueryType.Read, Query.QueryExecutionTime.BeforeMigration);
-                    ExecuteQueries(ref variables, origConnection, Query.QueryType.Execute, Query.QueryExecutionTime.BeforeMigration);
+                    ExecuteQueries(origConnection, Query.QueryType.Read, Query.QueryExecutionTime.BeforeMigration, variables);
+                    ExecuteQueries(origConnection, Query.QueryType.Execute, Query.QueryExecutionTime.BeforeMigration, variables);
 
                     origConnection.Close();
 
@@ -71,17 +71,17 @@ namespace EasyDataMigrator
                     destConnection.Open();
 
                     // First we obtain the "Read" type queries because we might need their data for execution queries later
-                    ExecuteQueries(ref variables, destConnection, Query.QueryType.Read, Query.QueryExecutionTime.BeforeMigration);
-                    ExecuteQueries(ref variables, destConnection, Query.QueryType.Execute, Query.QueryExecutionTime.BeforeMigration);
+                    ExecuteQueries(destConnection, Query.QueryType.Read, Query.QueryExecutionTime.BeforeMigration, variables);
+                    ExecuteQueries(destConnection, Query.QueryType.Execute, Query.QueryExecutionTime.BeforeMigration, variables);
 
                     destConnection.Close();
 
                 }
 
-                // We open connection to begin insert data
+                // We open Dest Connection here to avoid open() and close() operations every each table insert
                 destConnection.Open();
 
-                BeginMigration(mapper, origConnection, destConnection, logger);
+                BeginMigration(mapper, origConnection, destConnection, logger, ref variables);
 
                 //After Migration queries in Origin connection
                 if (origConnection.Queries.Count > 0)
@@ -89,8 +89,8 @@ namespace EasyDataMigrator
                     origConnection.Open();
 
                     // First we obtain the "Read" type queries because we might need their data for execution queries later
-                    ExecuteQueries(ref variables, origConnection, Query.QueryType.Read, Query.QueryExecutionTime.AfterMigration);
-                    ExecuteQueries(ref variables, origConnection, Query.QueryType.Execute, Query.QueryExecutionTime.AfterMigration);
+                    ExecuteQueries(origConnection, Query.QueryType.Read, Query.QueryExecutionTime.AfterMigration, variables);
+                    ExecuteQueries(origConnection, Query.QueryType.Execute, Query.QueryExecutionTime.AfterMigration, variables);
 
                     origConnection.Close();
 
@@ -99,14 +99,9 @@ namespace EasyDataMigrator
                 // After Migration queries in Destination connection
                 if (destConnection.Queries.Count > 0)
                 {
-                    destConnection.Open();
-
                     // First we obtain the "Read" type queries because we might need their data for execution queries later
-                    ExecuteQueries(ref variables, destConnection, Query.QueryType.Read, Query.QueryExecutionTime.AfterMigration);
-                    ExecuteQueries(ref variables, destConnection, Query.QueryType.Execute, Query.QueryExecutionTime.AfterMigration);
-
-                    destConnection.Close();
-
+                    ExecuteQueries(destConnection, Query.QueryType.Read, Query.QueryExecutionTime.AfterMigration, variables);
+                    ExecuteQueries(destConnection, Query.QueryType.Execute, Query.QueryExecutionTime.AfterMigration, variables);
                 }
 
             }
@@ -125,85 +120,83 @@ namespace EasyDataMigrator
 #if DEBUG
             Console.ReadKey();
 #endif
-        }
+        }      
 
-        private static int ExecuteQueries(ref Variables variables, DbConnector connection, Query.QueryType queryType, Query.QueryExecutionTime executionTime)
-        {
-            int totalAffectedRows = 0;
-
-            List<Query> queries = connection.Queries.FindAll(query => query.ExecutionTime == executionTime && query.Type == queryType);
-
-            if (queries.Count == 0)
-                return 0;
-
-            // We order by ExecutionOrder to avoid needed variables beeing empty
-            queries = (from q in queries
-                      orderby q.ExecutionOrder ascending
-                      select q).ToList();
-
-            foreach (Query query in queries)
-            {
-                int affectedRows = 0;
-
-                if (query.Sql.Contains("$")) // We determine if it is a parametrized query or not
-                {
-                    // We inject user-defined variables                        
-                    variables.ForEach(
-                        v =>
-                        {
-                            if (v.Type == typeof(string))
-                            {
-                                query.Sql = query.Sql.Remove('$').Replace(v.Name, "'" + v.Value + "'");
-                            }
-                            else
-                            {
-                                query.Sql = query.Sql.Remove('$').Replace(v.Name, v.TrueValue);
-                            }
-                        }
-                        );
-                }
-
-                if (!string.IsNullOrWhiteSpace(query.StoreIn) && query.Type == Query.QueryType.Read)
-                {
-                    Variable result = variables.Find(v => v.Name == query.StoreIn.Replace("$", ""));
-
-                    if (connection.SqlConnection.State != ConnectionState.Open)
-                        connection.Open();
-
-                    result.Value = connection.GetFirst(query.Sql);
-                    result.TrueValue = Convert.ChangeType(result.Value, result.Type);
-                }
-                else if (query.Type == Query.QueryType.Execute)
-                {
-                    if (connection.SqlConnection.State != ConnectionState.Open)
-                        connection.Open();
-
-                    affectedRows = connection.ModifyDB(query.Sql);
-                    totalAffectedRows += affectedRows;
-                }
-            }
-
-            return totalAffectedRows;
-        }
-
-        private static void BeginMigration(Mapper mapper, DbConnector origConnection, DbConnector destConnection, Logger logger)
+        private static void BeginMigration(Mapper mapper, DbConnector origConnection, DbConnector destConnection, Logger logger, ref Variables variables)
         {
             List<TableMap> failedMigrations = new();
+            Variables systemVariables = new();
 
             // We try to migrate the tables
             foreach (TableMap tableMap in mapper.TableMaps)
             {
-                if (tableMap.DestinationTableBusy)
+                systemVariables["DestTableName"] = new Variable("DestTableName")
+                {
+                    Type = typeof(string),
+                    Value = tableMap.ToTableName,
+                    TrueValue = tableMap.ToTableName,
+                };
+
+                systemVariables["DestTableIsBusy"] = new Variable("DestTableIsBusy")
+                {
+                    Type = typeof(bool),
+                };
+
+                // Before Table Migration queries in Origin connection
+                if (origConnection.Queries.Count > 0)
+                {
+                    origConnection.Open();
+
+                    // First we obtain the "Read" type queries because we might need their data for execution queries later
+                    ExecuteQueries(origConnection, Query.QueryType.Read, Query.QueryExecutionTime.BeforeTableMigration, variables, systemVariables);
+                    ExecuteQueries(origConnection, Query.QueryType.Execute, Query.QueryExecutionTime.BeforeTableMigration, variables, systemVariables);
+
+                    origConnection.Close();
+
+                }
+
+                // Before Table Migration queries in Destination connection
+                if (destConnection.Queries.Count > 0)
+                {
+                    // First we obtain the "Read" type queries because we might need their data for execution queries later
+                    ExecuteQueries(destConnection, Query.QueryType.Read, Query.QueryExecutionTime.BeforeTableMigration, variables, systemVariables);
+                    ExecuteQueries(destConnection, Query.QueryType.Execute, Query.QueryExecutionTime.BeforeTableMigration, variables, systemVariables);
+                }
+
+                if (systemVariables["DestTableIsBusy"].TrueValue)
                 {
                     logger.PrintNLog($"Skipping table {tableMap.ToTable} because it is currently busy.", Logger.LogType.WARNING);
                     failedMigrations.Add(tableMap);
                     continue;
-                }
+                }                
 
                 bool migFailed = MigrateTable(tableMap, origConnection, destConnection, logger);
 
-                if (migFailed)
-                    failedMigrations.Add(tableMap);                                                
+                if (migFailed)                
+                    failedMigrations.Add(tableMap);
+                else
+                {
+                    // After Table Migration queries in Origin connection
+                    if (origConnection.Queries.Count > 0)
+                    {
+                        origConnection.Open();
+
+                        // First we obtain the "Read" type queries because we might need their data for execution queries later
+                        ExecuteQueries(origConnection, Query.QueryType.Read, Query.QueryExecutionTime.AfterTableMigration, variables, systemVariables);
+                        ExecuteQueries(origConnection, Query.QueryType.Execute, Query.QueryExecutionTime.AfterTableMigration, variables, systemVariables);
+
+                        origConnection.Close();
+
+                    }
+
+                    // After Table Migration queries in Destination connection
+                    if (destConnection.Queries.Count > 0)
+                    {
+                        // First we obtain the "Read" type queries because we might need their data for execution queries later
+                        ExecuteQueries(destConnection, Query.QueryType.Read, Query.QueryExecutionTime.AfterTableMigration, variables, systemVariables);
+                        ExecuteQueries(destConnection, Query.QueryType.Execute, Query.QueryExecutionTime.AfterTableMigration, variables, systemVariables);
+                    }
+                }
             }
 
             // We retry (if any) failed migrations
@@ -220,8 +213,10 @@ namespace EasyDataMigrator
                 while (retryCount <= maxRetries)
                 {
                     logger.Print($"Retry number: {retryCount}.");
-                 
-                    if (failedMig.UpdateStatus())
+
+                    UpdateTableStatus(origConnection, destConnection, systemVariables);
+
+                    if (systemVariables["DestTableIsBusy"].TrueValue)
                     {
                         bool migFailed = MigrateTable(failedMig, origConnection, destConnection, logger);
                         
@@ -245,22 +240,14 @@ namespace EasyDataMigrator
                     logger.PrintNLog($"Could not migrate {failedMig.MapId} fatal error!", Logger.LogType.CRITICAL);
 
             }
-        }
+        }        
 
         private static bool MigrateTable(TableMap tableMap, DbConnector origConnection, DbConnector destConnection, Logger logger) 
         {            
 
             bool migrationFailed = false;
 
-            logger.PrintNLog($"Inserting records from {tableMap.FromTable} to {tableMap.ToTable}.");
-
-            // We execute (if any) the BeforeEachInsertQuery 
-            //if (BeforeEachInsertQuery)
-            //{
-            //    origConnection.Open();
-            //    origConnection.ModifyDB(ConfigurationManager.AppSettings["BeforeEachInsertQuery"]);
-            //    origConnection.Close();
-            //}
+            logger.PrintNLog($"Inserting records from {tableMap.FromTable} to {tableMap.ToTable}.");            
 
             if (!tableMap.UseBulkCopy)
             {
@@ -317,18 +304,135 @@ namespace EasyDataMigrator
                 data.Dispose();
             }
 
-            // We execute (if any) the AfterEachInsertQuery 
-            //if (AfterEachInsertQuery && !migrationFailed)
-            //{
-            //    origConnection.Open();
-            //    origConnection.ModifyDB(ConfigurationManager.AppSettings["AfterEachInsertQuery"]);
-            //    origConnection.Close();
-            //}
-
             if (!migrationFailed)
-                logger.PrintNLog($"Inserted records from {tableMap.FromTable} to {tableMap.ToTable} successfully!");
+                logger.PrintNLog($"Inserted records from {tableMap.FromTable} to {tableMap.ToTable} successfully!");            
 
             return migrationFailed;
+        }
+
+        private static int ExecuteQueries(DbConnector connection, Query.QueryType queryType, Query.QueryExecutionTime executionTime, Variables userVariables = null, Variables systemVariables = null)
+        {
+            int totalAffectedRows = 0;
+
+            List<Query> queries = connection.Queries.FindAll(query => query.ExecutionTime == executionTime && query.Type == queryType);
+
+            if (queries.Count == 0)
+                return 0;
+
+            // We order by ExecutionOrder to avoid needed variables beeing empty
+            queries = (from q in queries
+                       orderby q.ExecutionOrder ascending
+                       select q).ToList();
+
+            foreach (Query query in queries)
+            {
+                int affectedRows = 0;
+
+                Query opQuery = query.Clone();
+                
+                if (userVariables != null || systemVariables != null)
+                    ParametrizeQuery(opQuery, userVariables, systemVariables);
+
+                if (!string.IsNullOrWhiteSpace(opQuery.StoreIn) && opQuery.Type == Query.QueryType.Read)
+                {
+                    Variable userVar = null, sysVar = null;
+
+                    if (userVariables != null)
+                    {
+                        userVar = userVariables.Find(v => v.Name == opQuery.StoreIn.Replace("$", ""));
+                    }
+
+                    if (systemVariables != null)
+                    {
+                        sysVar = systemVariables.Find(v => v.Name == opQuery.StoreIn.Replace("%", ""));
+                    }
+                    
+                    if (connection.SqlConnection.State != ConnectionState.Open)
+                        connection.Open();
+
+                    if (userVar != null)
+                    {
+                        userVar.Value = Convert.ToString(connection.GetFirst(opQuery.Sql));
+                        userVar.TrueValue = Convert.ChangeType(userVar.Value, userVar.Type);
+                    }
+                    else if (sysVar != null)
+                    {
+                        sysVar.Value = Convert.ToString(connection.GetFirst(opQuery.Sql));
+                        sysVar.TrueValue = Convert.ChangeType(sysVar.Value, sysVar.Type);
+                    }
+                }
+                else if (opQuery.Type == Query.QueryType.Execute)
+                {
+                    if (connection.SqlConnection.State != ConnectionState.Open)
+                        connection.Open();
+
+                    affectedRows = connection.ModifyDB(opQuery.Sql);
+                    totalAffectedRows += affectedRows;
+                }
+            }
+
+            return totalAffectedRows;
+        }
+
+        private static void ParametrizeQuery(Query query, Variables userVariables, Variables systemVariables)
+        {            
+            if (query.Sql.Contains("$") && userVariables != null) // We determine if it is a user-parametrized query or not
+            {
+                // We inject user-defined variables                        
+                userVariables.ForEach(
+                    v =>
+                    {
+                        if (v.Type == typeof(string))
+                        {
+                            query.Sql = query.Sql.Replace("$" + v.Name, "'" + v.Value + "'");
+                        }
+                        else
+                        {
+                            query.Sql = query.Sql.Replace("$" + v.Name, v.Value); // We use Value property instead of TrueValue because Replace() needs strings
+                        }
+                    }
+                    );
+            }
+
+            if (query.Sql.Contains("%") && systemVariables != null)
+            {
+                systemVariables.ForEach(
+                    v =>
+                    {
+                        if (v.Type == typeof(string))
+                        {
+                            query.Sql = query.Sql.Replace("%" + v.Name, "'" + v.Value + "'");
+                        }
+                        else
+                        {
+                            query.Sql = query.Sql.Replace("%" + v.Name, v.Value);
+                        }
+                    }
+                    );
+            }
+        }
+
+        private static void UpdateTableStatus(DbConnector origConnection, DbConnector destConnection, Variables systemVariables)
+        {
+            if (origConnection.Queries.Count > 0)
+            {
+                origConnection.Open();
+
+                // First we obtain the "Read" type queries because we might need their data for execution queries later
+                ExecuteQueries(origConnection, Query.QueryType.Read, Query.QueryExecutionTime.BeforeTableMigration, null, systemVariables);
+                ExecuteQueries(origConnection, Query.QueryType.Execute, Query.QueryExecutionTime.BeforeTableMigration, null, systemVariables);
+
+                origConnection.Close();
+
+            }
+
+            // Before Table Migration queries in Destination connection
+            if (destConnection.Queries.Count > 0)
+            {
+                // First we obtain the "Read" type queries because we might need their data for execution queries later
+                ExecuteQueries(destConnection, Query.QueryType.Read, Query.QueryExecutionTime.BeforeTableMigration, null, systemVariables);
+                ExecuteQueries(destConnection, Query.QueryType.Execute, Query.QueryExecutionTime.BeforeTableMigration, null, systemVariables);
+            }
         }
     }
 }

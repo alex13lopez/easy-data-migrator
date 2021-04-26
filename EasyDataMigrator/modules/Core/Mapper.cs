@@ -12,8 +12,6 @@ namespace EasyDataMigrator.Modules.Core
         private List<TableMap> _tableMaps = new();
         public decimal TableMapPrecision { get; private set; }
         public decimal FieldMapPrecision { get; private set; }
-
-
         public List<TableMap> TableMaps { get => _tableMaps; private set => _tableMaps = value; }
 
         public void TryAutoMapping(DbConnector originConnection, DbConnector destinationConnection, string originPatterMatching = null, string destinationPatternMatching = null, bool excludePatternsFromMatch = true)
@@ -100,8 +98,7 @@ namespace EasyDataMigrator.Modules.Core
             if (tMap == null)
             {
                 _tableMaps.Add(tableMap);
-                tMap = _tableMaps.Find(t => t.MapId == tableMap.MapId);
-                _ = tMap.UpdateStatus();
+                tMap = _tableMaps.Find(t => t.MapId == tableMap.MapId);                
             }            
 
             return tMap;

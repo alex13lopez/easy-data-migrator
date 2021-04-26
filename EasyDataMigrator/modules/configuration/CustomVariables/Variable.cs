@@ -5,17 +5,24 @@ namespace EasyDataMigrator.Modules.Configuration
 {
     public class Variable : ConfigurationElement
     {
+        private Type _type;
+        private string _name;
+        private string _value;
+
         [ConfigurationProperty("name", IsRequired = true, IsKey = true)]
         public string Name
         {
             get
             {
-                return this["name"] as string;
+                if (string.IsNullOrWhiteSpace(_name))
+                    _name = this["name"] as string;
+
+                return _name;
             }
 
             private set
             {
-                this["name"] = value;
+                _name = value;
             }
         }
 
@@ -26,12 +33,15 @@ namespace EasyDataMigrator.Modules.Configuration
         {
             get
             {
-                return this["value"] as string;
+                if (string.IsNullOrWhiteSpace(_value))
+                    _value = this["value"] as string;
+
+                return _value;
             }
 
             set
             {
-                this["value"] = value;
+                _value = value;
             }
         }
 
@@ -43,7 +53,7 @@ namespace EasyDataMigrator.Modules.Configuration
         [ConfigurationProperty("type",
             DefaultValue = "string",
             IsRequired = true)]
-        protected string _type
+        private string _Type
         {
             get
             {
@@ -55,7 +65,7 @@ namespace EasyDataMigrator.Modules.Configuration
         {
             get
             {
-                Type type = _type switch
+                Type type = _Type switch
                 {
                     "int" => typeof(int),
                     "bigint" => typeof(long),
@@ -63,11 +73,17 @@ namespace EasyDataMigrator.Modules.Configuration
                     "float" => typeof(float),
                     "decimal" => typeof(decimal),
                     "money" => typeof(decimal),
-                    _ => typeof(string),// If we do not recognize the type we return string by default
+                    "boolean" => typeof(bool),
+                    "bool" => typeof(bool),
+                    _ => typeof(string) // If we do not recognize the type we return string by default
                 };
 
-                return type;
+                if (_type == null)
+                    _type = type;
+                
+                return _type;
             }
+            set => _type = value;
         }
 
         public Variable()
