@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace EasyDataMigrator.modules
+namespace EasyDataMigrator.Modules.Core
 {
     static class QueryBuilder
     {

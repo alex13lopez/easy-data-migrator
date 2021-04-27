@@ -1,28 +1,48 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
+using EasyDataMigrator.Modules.Configuration;
 
-namespace EasyDataMigrator.modules
+namespace EasyDataMigrator.Modules.Core
 {
     public class DbConnector
     {
         private readonly SqlConnection _sqlConnection;
         private SqlTransaction _sqlTransaction;
+        private Query.QueryConnection _connectionType;       
 
         public string ServerName { get; private set; }
-        public string DataBaseName { get; private set; }     
-        
+        public string DataBaseName { get; private set; }             
         public SqlConnection SqlConnection { get => _sqlConnection; }
+        public List<Query> Queries { get; private set; }
 
-        public DbConnector(string ConnectionStringKey) //Conexión a BD SQL Server
+        private void SetConnectionType(string ConnectionStringKey)
+        {
+            switch (ConnectionStringKey)
+            {
+                case "OriginConnection":
+                    _connectionType = Query.QueryConnection.OriginConnection;
+                    break;
+                case "DestinationConnection":
+                    _connectionType = Query.QueryConnection.DestinationConnection;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(ConnectionStringKey, "Non valid connection string name");
+            }
+        }
+
+        public DbConnector(string ConnectionStringKey) // Conexión a BD SQL Server
         {
             string connectionString = ConfigurationManager.ConnectionStrings[ConnectionStringKey].ConnectionString;
             _sqlConnection = new SqlConnection(connectionString);
             ServerName = _sqlConnection.DataSource;
-            DataBaseName = _sqlConnection.Database;
+            DataBaseName = _sqlConnection.Database;            
+            SetConnectionType(ConnectionStringKey);
+            LoadQueries();
         }
-
+        
         public SqlDataReader ReadDB(string sql, bool transactionedQuery = false) // Reading data operations, by default we do NOT require transaction since we are not modifying data on de DB
         {
             SqlCommand command;
@@ -44,6 +64,30 @@ namespace EasyDataMigrator.modules
             command.CommandTimeout = Convert.ToInt32(ConfigurationManager.AppSettings["MaxBulkModeTimeout"]); // Same max time as bulk mode, has no sense having less time than the max time the app is gonna wait
 
             return command.ExecuteReader();
+        }
+
+        public object GetFirst(string sql, int column = 0, bool transactionedQuery = false)
+        {
+            using (SqlDataReader dataR = ReadDB(sql, transactionedQuery))
+            {
+                if (dataR.Read())
+                {
+                    return dataR.GetValue(column);
+                }
+            }
+
+            return null;
+        }
+
+        public object GetFirst(string sql, string columnName, bool transactionedQuery = false)
+        {
+            using (SqlDataReader dataR = ReadDB(sql, transactionedQuery))
+            {
+                if (dataR.Read())
+                    return dataR.GetValue(columnName);
+            }
+
+            return null;
         }
 
         public int ModifyDB(string sql, bool transactionedQuery = true) // Modify data operations, by default we DO require transaction since we are modifying data on de DB and something could go wrong
@@ -110,6 +154,18 @@ namespace EasyDataMigrator.modules
             {
                 Console.WriteLine(e.Message);
             }            
+        }
+
+        private void LoadQueries()
+        {
+            Queries = new List<Query>();            
+            Queries queries = CustomQueriesConfig.GetConfig().Queries;
+
+            foreach (Query query in queries)
+            {
+                if (query.Connection == _connectionType)
+                    Queries.Add(query);
+            }
         }
     }
 }
