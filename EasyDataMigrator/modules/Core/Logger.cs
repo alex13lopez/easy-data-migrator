@@ -8,6 +8,8 @@ namespace EasyDataMigrator.Modules.Core
     {
         private readonly System.DateTime _dateNow;
 
+        public bool AlternateColors { get; set; }
+
         public enum LogType
         {
             INFO,
@@ -16,11 +18,15 @@ namespace EasyDataMigrator.Modules.Core
             CRITICAL
         }
 
-        public Logger() => _dateNow = System.DateTime.Now;
-
-        public void Log(string logMessage, LogType logType = LogType.INFO, string format = "_yyyyMMdd-hh.mm.ss.fff", string formatLines = "hh:mm:ss")
+        public Logger()
         {
-            string fileName = ConfigurationManager.AppSettings["LogPath"] + "log" + _dateNow.ToString(format) + ".txt";
+            _dateNow = System.DateTime.Now;
+            AlternateColors = false;
+        }
+
+        public void Log(string logMessage, LogType logType = LogType.INFO, string format = "_yyyyMMdd-hh.mm.ss.fff", string formatLines = "hh:mm:ss", string prefixName = "log")
+        {
+            string fileName = ConfigurationManager.AppSettings["LogPath"] + prefixName + _dateNow.ToString(format) + ".txt";
 
             try
             {
@@ -41,16 +47,16 @@ namespace EasyDataMigrator.Modules.Core
             switch (logType)
             {
                 case LogType.INFO:
-                    Console.ForegroundColor = ConsoleColor.Blue;
+                    Console.ForegroundColor = !AlternateColors ? ConsoleColor.Blue : ConsoleColor.Green;
                     break;
                 case LogType.WARNING:
-                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.ForegroundColor = !AlternateColors ? ConsoleColor.Yellow : ConsoleColor.DarkYellow;
                     break;
                 case LogType.ERROR:
-                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.ForegroundColor = !AlternateColors ? ConsoleColor.Red : ConsoleColor.Magenta;
                     break;
                 case LogType.CRITICAL:
-                    Console.ForegroundColor = ConsoleColor.DarkRed;
+                    Console.ForegroundColor = !AlternateColors ? ConsoleColor.DarkRed : ConsoleColor.DarkMagenta;
                     break;
                 default:
                     break;
@@ -63,10 +69,10 @@ namespace EasyDataMigrator.Modules.Core
             Console.ResetColor();
         }
 
-        public void PrintNLog(string message, LogType logType = LogType.INFO)
+        public void PrintNLog(string message, LogType logType = LogType.INFO, string prefixName = "log")
         {
             Print(message, logType);
-            Log(message, logType);
+            Log(message, logType, "_yyyyMMdd-hh.mm.ss.fff", "hh:mm:ss", prefixName);
         }
     }
 }

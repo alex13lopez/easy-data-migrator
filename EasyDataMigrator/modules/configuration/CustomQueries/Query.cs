@@ -2,7 +2,7 @@
 using System.Configuration;
 
 namespace EasyDataMigrator.Modules.Configuration
-{    
+{
 
     public class Query : ConfigurationElement
     {
@@ -18,7 +18,7 @@ namespace EasyDataMigrator.Modules.Configuration
         {
             ID = _ID;
             InitQuery();
-        }        
+        }
 
         public Query()
         {
@@ -49,25 +49,25 @@ namespace EasyDataMigrator.Modules.Configuration
         }
 
         [ConfigurationProperty("connection", IsRequired = true)]
-        public QueryConnection Connection 
+        public QueryConnection Connection
         {
-            get 
+            get
             {
                 if (_connection == QueryConnection.Null)
                     _connection = (QueryConnection)this["connection"];
 
-                return _connection;         
+                return _connection;
             }
 
             private set
             {
                 _connection = value;
             }
-        }        
+        }
 
         [ConfigurationProperty("sqlCommand", IsRequired = true)]
-        public string Sql 
-        { 
+        public string Sql
+        {
             get
             {
                 if (string.IsNullOrWhiteSpace(_sql))
@@ -83,9 +83,9 @@ namespace EasyDataMigrator.Modules.Configuration
         }
 
         [ConfigurationProperty("type", IsRequired = true, DefaultValue = QueryType.Execute)]
-        public QueryType Type 
-        { 
-            get 
+        public QueryType Type
+        {
+            get
             {
                 if (_type == QueryType.Null)
                     _type = (QueryType)this["type"];
@@ -100,7 +100,7 @@ namespace EasyDataMigrator.Modules.Configuration
         }
 
         [ConfigurationProperty("executionTime", IsRequired = true)]
-        public QueryExecutionTime ExecutionTime 
+        public QueryExecutionTime ExecutionTime
         {
             get
             {
@@ -114,11 +114,11 @@ namespace EasyDataMigrator.Modules.Configuration
             {
                 _executionTime = value;
             }
-        }        
+        }
 
         [ConfigurationProperty("id", IsRequired = true, IsKey = true)]
-        public string ID 
-        { 
+        public string ID
+        {
             get
             {
                 if (string.IsNullOrWhiteSpace(_id))
@@ -156,8 +156,8 @@ namespace EasyDataMigrator.Modules.Configuration
             {
                 if (_executionOrder == -1)
                     _executionOrder = (int)this["executionOrder"];
-                
-                return _executionOrder;   
+
+                return _executionOrder;
             }
 
             private set
@@ -165,6 +165,8 @@ namespace EasyDataMigrator.Modules.Configuration
                 _executionOrder = value;
             }
         }
+
+        public string OriginalID { get; set; }
 
         public Query Clone()
         {
@@ -176,6 +178,7 @@ namespace EasyDataMigrator.Modules.Configuration
             clone.ID = ID + "_clone";
             clone.StoreIn = StoreIn;
             clone.ExecutionOrder = ExecutionOrder;
+            clone.OriginalID = ID;
             return clone;
         }
 

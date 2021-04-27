@@ -58,8 +58,8 @@ namespace EasyDataMigrator
                     origConnection.Open();
 
                     // First we obtain the "Read" type queries because we might need their data for execution queries later
-                    ExecuteQueries(origConnection, Query.QueryType.Read, Query.QueryExecutionTime.BeforeMigration, variables);
-                    ExecuteQueries(origConnection, Query.QueryType.Execute, Query.QueryExecutionTime.BeforeMigration, variables);
+                    ExecuteQueries(origConnection, Query.QueryType.Read, Query.QueryExecutionTime.BeforeMigration, logger, variables);
+                    ExecuteQueries(origConnection, Query.QueryType.Execute, Query.QueryExecutionTime.BeforeMigration, logger, variables);
 
                     origConnection.Close();
 
@@ -71,8 +71,8 @@ namespace EasyDataMigrator
                     destConnection.Open();
 
                     // First we obtain the "Read" type queries because we might need their data for execution queries later
-                    ExecuteQueries(destConnection, Query.QueryType.Read, Query.QueryExecutionTime.BeforeMigration, variables);
-                    ExecuteQueries(destConnection, Query.QueryType.Execute, Query.QueryExecutionTime.BeforeMigration, variables);
+                    ExecuteQueries(destConnection, Query.QueryType.Read, Query.QueryExecutionTime.BeforeMigration, logger, variables);
+                    ExecuteQueries(destConnection, Query.QueryType.Execute, Query.QueryExecutionTime.BeforeMigration, logger, variables);
 
                     destConnection.Close();
 
@@ -89,8 +89,8 @@ namespace EasyDataMigrator
                     origConnection.Open();
 
                     // First we obtain the "Read" type queries because we might need their data for execution queries later
-                    ExecuteQueries(origConnection, Query.QueryType.Read, Query.QueryExecutionTime.AfterMigration, variables);
-                    ExecuteQueries(origConnection, Query.QueryType.Execute, Query.QueryExecutionTime.AfterMigration, variables);
+                    ExecuteQueries(origConnection, Query.QueryType.Read, Query.QueryExecutionTime.AfterMigration, logger, variables);
+                    ExecuteQueries(origConnection, Query.QueryType.Execute, Query.QueryExecutionTime.AfterMigration, logger, variables);
 
                     origConnection.Close();
 
@@ -100,8 +100,8 @@ namespace EasyDataMigrator
                 if (destConnection.Queries.Count > 0)
                 {
                     // First we obtain the "Read" type queries because we might need their data for execution queries later
-                    ExecuteQueries(destConnection, Query.QueryType.Read, Query.QueryExecutionTime.AfterMigration, variables);
-                    ExecuteQueries(destConnection, Query.QueryType.Execute, Query.QueryExecutionTime.AfterMigration, variables);
+                    ExecuteQueries(destConnection, Query.QueryType.Read, Query.QueryExecutionTime.AfterMigration, logger, variables);
+                    ExecuteQueries(destConnection, Query.QueryType.Execute, Query.QueryExecutionTime.AfterMigration, logger, variables);
                 }
 
             }
@@ -148,8 +148,8 @@ namespace EasyDataMigrator
                     origConnection.Open();
 
                     // First we obtain the "Read" type queries because we might need their data for execution queries later
-                    ExecuteQueries(origConnection, Query.QueryType.Read, Query.QueryExecutionTime.BeforeTableMigration, variables, systemVariables);
-                    ExecuteQueries(origConnection, Query.QueryType.Execute, Query.QueryExecutionTime.BeforeTableMigration, variables, systemVariables);
+                    ExecuteQueries(origConnection, Query.QueryType.Read, Query.QueryExecutionTime.BeforeTableMigration, logger, variables, systemVariables);
+                    ExecuteQueries(origConnection, Query.QueryType.Execute, Query.QueryExecutionTime.BeforeTableMigration, logger, variables, systemVariables);
 
                     origConnection.Close();
 
@@ -159,8 +159,8 @@ namespace EasyDataMigrator
                 if (destConnection.Queries.Count > 0)
                 {
                     // First we obtain the "Read" type queries because we might need their data for execution queries later
-                    ExecuteQueries(destConnection, Query.QueryType.Read, Query.QueryExecutionTime.BeforeTableMigration, variables, systemVariables);
-                    ExecuteQueries(destConnection, Query.QueryType.Execute, Query.QueryExecutionTime.BeforeTableMigration, variables, systemVariables);
+                    ExecuteQueries(destConnection, Query.QueryType.Read, Query.QueryExecutionTime.BeforeTableMigration, logger, variables, systemVariables);
+                    ExecuteQueries(destConnection, Query.QueryType.Execute, Query.QueryExecutionTime.BeforeTableMigration, logger, variables, systemVariables);
                 }
 
                 if (systemVariables["DestTableIsBusy"].TrueValue)
@@ -182,8 +182,8 @@ namespace EasyDataMigrator
                         origConnection.Open();
 
                         // First we obtain the "Read" type queries because we might need their data for execution queries later
-                        ExecuteQueries(origConnection, Query.QueryType.Read, Query.QueryExecutionTime.AfterTableMigration, variables, systemVariables);
-                        ExecuteQueries(origConnection, Query.QueryType.Execute, Query.QueryExecutionTime.AfterTableMigration, variables, systemVariables);
+                        ExecuteQueries(origConnection, Query.QueryType.Read, Query.QueryExecutionTime.AfterTableMigration, logger, variables, systemVariables);
+                        ExecuteQueries(origConnection, Query.QueryType.Execute, Query.QueryExecutionTime.AfterTableMigration, logger, variables, systemVariables);
 
                         origConnection.Close();
 
@@ -193,8 +193,8 @@ namespace EasyDataMigrator
                     if (destConnection.Queries.Count > 0)
                     {
                         // First we obtain the "Read" type queries because we might need their data for execution queries later
-                        ExecuteQueries(destConnection, Query.QueryType.Read, Query.QueryExecutionTime.AfterTableMigration, variables, systemVariables);
-                        ExecuteQueries(destConnection, Query.QueryType.Execute, Query.QueryExecutionTime.AfterTableMigration, variables, systemVariables);
+                        ExecuteQueries(destConnection, Query.QueryType.Read, Query.QueryExecutionTime.AfterTableMigration, logger, variables, systemVariables);
+                        ExecuteQueries(destConnection, Query.QueryType.Execute, Query.QueryExecutionTime.AfterTableMigration, logger, variables, systemVariables);
                     }
                 }
             }
@@ -310,14 +310,17 @@ namespace EasyDataMigrator
             return migrationFailed;
         }
 
-        private static int ExecuteQueries(DbConnector connection, Query.QueryType queryType, Query.QueryExecutionTime executionTime, Variables userVariables = null, Variables systemVariables = null)
+        private static void ExecuteQueries(DbConnector connection, Query.QueryType queryType, Query.QueryExecutionTime executionTime, Logger logger, Variables userVariables = null, Variables systemVariables = null)
         {
-            int totalAffectedRows = 0;
+            logger.AlternateColors = true;
 
             List<Query> queries = connection.Queries.FindAll(query => query.ExecutionTime == executionTime && query.Type == queryType);
 
             if (queries.Count == 0)
-                return 0;
+            {
+                logger.AlternateColors = false;
+                return;
+            }
 
             // We order by ExecutionOrder to avoid needed variables beeing empty
             queries = (from q in queries
@@ -354,11 +357,14 @@ namespace EasyDataMigrator
                     {
                         userVar.Value = Convert.ToString(connection.GetFirst(opQuery.Sql));
                         userVar.TrueValue = Convert.ChangeType(userVar.Value, userVar.Type);
+                        logger.PrintNLog($"User-defined read query: {opQuery.OriginalID} which is stored in user-defined variable {userVar.Name} has now the value {userVar.Value}", Logger.LogType.INFO, "querylog");
+                        
                     }
                     else if (sysVar != null)
                     {
                         sysVar.Value = Convert.ToString(connection.GetFirst(opQuery.Sql));
                         sysVar.TrueValue = Convert.ChangeType(sysVar.Value, sysVar.Type);
+                        logger.PrintNLog($"User-defined read query: {opQuery.OriginalID} which is stored in system-defined variable {sysVar.Name} has now the value {sysVar.Value}", Logger.LogType.INFO, "querylog");
                     }
                 }
                 else if (opQuery.Type == Query.QueryType.Execute)
@@ -367,11 +373,12 @@ namespace EasyDataMigrator
                         connection.Open();
 
                     affectedRows = connection.ModifyDB(opQuery.Sql);
-                    totalAffectedRows += affectedRows;
+
+                    logger.PrintNLog($"User-defined execute query: {opQuery.OriginalID} has affected {affectedRows} rows", Logger.LogType.INFO, "querylog");
                 }
             }
 
-            return totalAffectedRows;
+            logger.AlternateColors = false;
         }
 
         private static void ParametrizeQuery(Query query, Variables userVariables, Variables systemVariables)
