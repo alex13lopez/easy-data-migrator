@@ -122,7 +122,29 @@ namespace EasyDataMigrator.Modules.Core
             return adapter.UpdateCommand.ExecuteNonQuery();
         }
 
-        public void Open() => _sqlConnection.Open();
+        public void Open() 
+        {
+            try
+            {
+                _sqlConnection.Open();
+
+            }
+            catch (SqlException ex) when (ex.Number == 53)
+            {
+                string user = ex.Message.Remove(0, ex.Message.LastIndexOf(' ') + 1).Trim();
+                user = user.Remove(user.Length - 1);
+                string errMsg = $"Cannot find server {_sqlConnection.DataSource} make sure you have typed it correctly and the user {user} has access.";
+                throw new Exception(errMsg, ex);
+            }
+            catch (SqlException ex) when (ex.Number == 4060)
+            {
+                string user = ex.Message.Remove(0, ex.Message.LastIndexOf(' ') + 1).Trim();
+                user = user.Remove(user.Length - 1);
+                string errMsg = $"Cannot open database '{_sqlConnection.Database}' from server '{_sqlConnection.DataSource}'. Make sure you have typed it correctly and the user {user} has access.";
+                throw new Exception(errMsg, ex);
+            }
+        }
+
         public void Close() => _sqlConnection.Close();
         public void BeginTransaction(string transName = "DefaultTransaction") => _sqlTransaction = _sqlConnection.BeginTransaction(transName);
 

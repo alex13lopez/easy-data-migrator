@@ -25,11 +25,22 @@ namespace EasyDataMigrator
             bool excludePatternFromMatch = ConfigurationManager.AppSettings["excludePatternFromMatch"] == "True";
             decimal precisionThreshold;
 
-            origConnection.Open();
-            destConnection.Open();
-            mapper.TryAutoMapping(origConnection, destConnection, OriginPattern, DestinationPattern, excludePatternFromMatch);
-            origConnection.Close();
-            destConnection.Close();
+            try
+            {
+                origConnection.Open();
+                destConnection.Open();
+                mapper.TryAutoMapping(origConnection, destConnection, OriginPattern, DestinationPattern, excludePatternFromMatch);
+                origConnection.Close();
+                destConnection.Close();
+            }
+            catch (Exception ex)
+            {
+                logger.PrintNLog(ex.Message, Logger.LogType.CRITICAL);
+#if DEBUG
+                Console.ReadKey();
+#endif
+                return;
+            }
 
             if (!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["MapPrecisionThreshold"]))
                 precisionThreshold = Convert.ToDecimal(ConfigurationManager.AppSettings["MapPrecisionThreshold"]);
@@ -126,6 +137,7 @@ namespace EasyDataMigrator
         {
             List<TableMap> failedMigrations = new();
             Variables systemVariables = new();
+            bool UseControlMech = ConfigurationManager.AppSettings["UseTableControlMechanism"] == "True";
 
             // We try to migrate the tables
             foreach (TableMap tableMap in mapper.TableMaps)
@@ -161,9 +173,9 @@ namespace EasyDataMigrator
                     // First we obtain the "Read" type queries because we might need their data for execution queries later
                     ExecuteQueries(destConnection, Query.QueryType.Read, Query.QueryExecutionTime.BeforeTableMigration, logger, variables, systemVariables);
                     ExecuteQueries(destConnection, Query.QueryType.Execute, Query.QueryExecutionTime.BeforeTableMigration, logger, variables, systemVariables);
-                }
+                }                
 
-                if (systemVariables["DestTableIsBusy"].TrueValue)
+                if (systemVariables["DestTableIsBusy"].TrueValue && UseControlMech)
                 {
                     logger.PrintNLog($"Skipping table {tableMap.ToTable} because it is currently busy.", Logger.LogType.WARNING);
                     failedMigrations.Add(tableMap);
@@ -214,23 +226,42 @@ namespace EasyDataMigrator
                 {
                     logger.Print($"Retry number: {retryCount}.");
 
-                    UpdateTableStatus(origConnection, destConnection, systemVariables);
+                    if (UseControlMech)
+                    {
+                        UpdateTableStatus(origConnection, destConnection, systemVariables);
 
-                    if (systemVariables["DestTableIsBusy"].TrueValue)
+                        if (!systemVariables["DestTableIsBusy"].TrueValue)
+                        {
+                            bool migFailed = MigrateTable(failedMig, origConnection, destConnection, logger);
+                        
+                            if (!migFailed)
+                            {
+                                logger.PrintNLog($"Failed migration {failedMig.MapId} has been succesfully migrated on retry number {retryCount}!");
+                                retrySucceed = true;
+                                break;
+                            }                        
+                        }
+                        else
+                        {
+                            logger.PrintNLog($"Table is still busy, waiting {busyTablesWaitTime} seconds before next retry.", Logger.LogType.WARNING);
+                            Thread.Sleep(busyTablesWaitTime);
+                        }
+                    }
+                    else
                     {
                         bool migFailed = MigrateTable(failedMig, origConnection, destConnection, logger);
-                        
+
                         if (!migFailed)
                         {
                             logger.PrintNLog($"Failed migration {failedMig.MapId} has been succesfully migrated on retry number {retryCount}!");
                             retrySucceed = true;
                             break;
                         }
-                    }
-                    else
-                    {
-                        logger.PrintNLog($"Table is still busy, waiting {busyTablesWaitTime} seconds before next retry.", Logger.LogType.WARNING);
-                        Thread.Sleep(busyTablesWaitTime);
+                        else
+                        {
+                            logger.PrintNLog($"Failed migration {failedMig.MapId} still could not be migrated. Waiting {busyTablesWaitTime}s before next retry!", Logger.LogType.ERROR);
+                            Thread.Sleep(busyTablesWaitTime);
+                        }
                     }
 
                     retryCount++;
@@ -357,14 +388,14 @@ namespace EasyDataMigrator
                     {
                         userVar.Value = Convert.ToString(connection.GetFirst(opQuery.Sql));
                         userVar.TrueValue = Convert.ChangeType(userVar.Value, userVar.Type);
-                        logger.PrintNLog($"User-defined read query: {opQuery.OriginalID} which is stored in user-defined variable {userVar.Name} has now the value {userVar.Value}", Logger.LogType.INFO, "querylog");
+                        logger.PrintNLog($"User-defined read query: {opQuery.OriginalID} which is stored in user-defined variable {userVar.Name} has now the value: {userVar.Value}", Logger.LogType.INFO, "querylog");
                         
                     }
                     else if (sysVar != null)
                     {
                         sysVar.Value = Convert.ToString(connection.GetFirst(opQuery.Sql));
                         sysVar.TrueValue = Convert.ChangeType(sysVar.Value, sysVar.Type);
-                        logger.PrintNLog($"User-defined read query: {opQuery.OriginalID} which is stored in system-defined variable {sysVar.Name} has now the value {sysVar.Value}", Logger.LogType.INFO, "querylog");
+                        logger.PrintNLog($"User-defined read query: {opQuery.OriginalID} which is stored in system-defined variable {sysVar.Name} has now the value: {sysVar.Value}", Logger.LogType.INFO, "querylog");
                     }
                 }
                 else if (opQuery.Type == Query.QueryType.Execute)
