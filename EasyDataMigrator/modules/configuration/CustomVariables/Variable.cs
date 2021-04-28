@@ -8,6 +8,7 @@ namespace EasyDataMigrator.Modules.Configuration
         private Type _type;
         private string _name;
         private string _value;
+        private dynamic _trueValue;
 
         [ConfigurationProperty("name", IsRequired = true, IsKey = true)]
         public string Name
@@ -47,7 +48,16 @@ namespace EasyDataMigrator.Modules.Configuration
 
         public dynamic TrueValue
         {
-            get; set;
+            get => _trueValue; 
+            set
+            {
+                _trueValue = value;
+                
+                if (Type != typeof(string))
+                    _value = Convert.ToString(value); // We cascade-update the value
+                else
+                    _value = value;
+            }
         }
 
         [ConfigurationProperty("type",
