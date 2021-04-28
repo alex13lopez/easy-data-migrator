@@ -14,7 +14,7 @@ namespace EasyDataMigrator.Modules.Core
         public decimal FieldMapPrecision { get; private set; }
         public List<TableMap> TableMaps { get => _tableMaps; private set => _tableMaps = value; }
 
-        public void TryAutoMapping(DbConnector originConnection, DbConnector destinationConnection, string originPatterMatching = null, string destinationPatternMatching = null, bool excludePatternsFromMatch = true)
+        public void AutoMap(DbConnector originConnection, DbConnector destinationConnection, string originPatterMatching = null, string destinationPatternMatching = null, bool excludePatternsFromMatch = true)
         {
             string query = ConfigurationManager.AppSettings["GetTablesQuery"];
             SqlDataReader originReader;

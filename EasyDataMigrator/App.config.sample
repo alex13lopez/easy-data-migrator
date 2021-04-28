@@ -23,6 +23,7 @@
     <add key="MaxQueryTimeout" value="60"/>
     <add key="MaxBulkModeTimeout" value="300"/>
     <add key="MapPrecisionThreshold" value="50"/>
+    <add key="UseTableControlMechanism" value="True"/>
   </appSettings>
 
   <CustomVariables>
