@@ -51,7 +51,7 @@ namespace EasyDataMigrator
                 logger.PrintNLog("Migration process started.");
                 logger.PrintNLog($"Mapping precision -> TABLES: {commander.Mapper.TableMapPrecision} | FIELDS: {commander.Mapper.FieldMapPrecision}");
 
-                // First always we execute the "Read" type queries because we might need their results for execute queries
+                // First, we always execute the "Read" type queries because we might need their results for execute queries
                 commander.ExecuteQueries(Query.QueryType.Read, Query.QueryExecutionTime.BeforeMigration);
                 commander.ExecuteQueries(Query.QueryType.Execute, Query.QueryExecutionTime.BeforeMigration);
 

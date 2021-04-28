@@ -127,7 +127,6 @@ namespace EasyDataMigrator.Modules
 
                 try
                 {
-
                     if (!string.IsNullOrWhiteSpace(opQuery.StoreIn) && opQuery.Type == Query.QueryType.Read)
                     {
                         Variable userVar = null, sysVar = null;
@@ -171,7 +170,33 @@ namespace EasyDataMigrator.Modules
                 }
                 catch (SqlException ex) when (ex.Number == 208) // SQ_BADOBJECT --> The specified object cannot be found.
                 {
-                    throw new MigrationException("No se encuentra el objeto especificado. No se puede ejecutar la consulta. Error de Base de Datos.", MigrationException.ExceptionSeverityLevel.CRITICAL, ex);
+                    connection.Close();
+                    throw new MigrationException("The specified object cannot be found. DataBase error.", MigrationException.ExceptionSeverityLevel.CRITICAL, ex);
+                }
+                catch (SqlException ex) when (ex.Number == -2) // Query timeout
+                {
+                    connection.Close();
+                    throw new MigrationException($"Query has reached timeout. {Environment.NewLine}" + ex.Message, MigrationException.ExceptionSeverityLevel.CRITICAL, ex);
+                }
+                catch (InvalidCastException ex)
+                {
+                    connection.Close();
+                    throw new MigrationException(ex.Message, MigrationException.ExceptionSeverityLevel.CRITICAL, ex);
+                }
+                catch (FormatException ex)
+                {
+                    connection.Close();
+                    throw new MigrationException(ex.Message, MigrationException.ExceptionSeverityLevel.CRITICAL, ex);
+                }
+                catch (OverflowException ex)
+                {
+                    connection.Close();
+                    throw new MigrationException(ex.Message, MigrationException.ExceptionSeverityLevel.CRITICAL, ex);
+                }
+                catch (ArgumentException ex)
+                {
+                    connection.Close();
+                    throw new MigrationException(ex.Message, MigrationException.ExceptionSeverityLevel.CRITICAL, ex);
                 }
             }
 
