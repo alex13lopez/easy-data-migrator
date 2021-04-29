@@ -66,6 +66,12 @@ namespace EasyDataMigrator
             {
                 logger.PrintNLog(ex.Message, Logger.LogType.CRITICAL);
                 logger.PrintNLog("Migration process ended with errors.");
+
+                if (commander.OrigConnection.SqlConnection.State == System.Data.ConnectionState.Open)
+                    commander.OrigConnection.Close();
+
+                if (commander.DestConnection.SqlConnection.State == System.Data.ConnectionState.Open)
+                    commander.DestConnection.Close();
 #if DEBUG
                 Console.ReadKey();
 
@@ -76,6 +82,12 @@ namespace EasyDataMigrator
             {
                 logger.PrintNLog(ex.Message, Logger.LogType.CRITICAL);
                 logger.PrintNLog("Migration process ended with errors.");
+
+                if (commander.OrigConnection.SqlConnection.State == System.Data.ConnectionState.Open)
+                    commander.OrigConnection.Close();
+
+                if (commander.DestConnection.SqlConnection.State == System.Data.ConnectionState.Open)
+                    commander.DestConnection.Close();
 #if DEBUG
                 Console.ReadKey();
 #endif

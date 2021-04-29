@@ -25,6 +25,8 @@ namespace EasyDataMigrator.Modules
         private readonly bool UseControlMech;
 
         public Mapper Mapper { get => mapper; }
+        public DbConnector OrigConnection { get => origConnection; }
+        public DbConnector DestConnection { get => destConnection; }
 
         public Commander(Logger _logger)
         {
@@ -244,7 +246,9 @@ namespace EasyDataMigrator.Modules
 
         public void BeginMigration()
         {
-            List<TableMap> failedMigrations = new();                        
+            List<TableMap> failedMigrations = new();
+
+            destConnection.Open();
 
             foreach (TableMap tableMap in Mapper.TableMaps)
             {
@@ -270,7 +274,7 @@ namespace EasyDataMigrator.Modules
                 }
                 
                 try
-                {
+                {                    
                     // We try table migration
                     MigrateMap(tableMap);
                     migrationSucceded = true;
@@ -291,6 +295,8 @@ namespace EasyDataMigrator.Modules
                 if (failedMigrations.Count > 0)
                     RetryFailedMigrations(failedMigrations);
             }
+
+            destConnection.Close();
         }
 
 
