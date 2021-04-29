@@ -7,6 +7,9 @@ using System;
 
 namespace EasyDataMigrator.Modules.Core
 {
+    /// <summary>
+    /// Another of the big main core classes. This class is the one in charge of the AutoMapping feature of the program.
+    /// </summary>
     public class Mapper
     {
         private List<TableMap> _tableMaps = new();

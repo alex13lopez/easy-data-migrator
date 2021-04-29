@@ -8,6 +8,9 @@ using System.Threading.Tasks;
 
 namespace EasyDataMigrator.Modules.Core
 {
+    /// <summary>
+    /// One of the main core classes, this class is the one used to Map two tables with their fields and such.
+    /// </summary>
     public class TableMap
     {
         private string _mapId;
@@ -55,6 +58,9 @@ namespace EasyDataMigrator.Modules.Core
         public void AddFieldMap(FieldMap fieldMap) => _fieldMaps.Add(fieldMap);
     }
 
+    /// <summary>
+    /// Another one of the main core classes, this class is the one used to Map the fields of the tables.
+    /// </summary>
     public class FieldMap
     {
         public string OriginField { get; set; }

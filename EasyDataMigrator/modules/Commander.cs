@@ -28,6 +28,10 @@ namespace EasyDataMigrator.Modules
         public DbConnector OrigConnection { get => origConnection; }
         public DbConnector DestConnection { get => destConnection; }
 
+        /// <summary>
+        /// Commander is the main central class that will "command" and lead all migration operations, from Mapping to actually migrate the data.
+        /// </summary>
+        /// <param name="_logger">We pass an object of type logger so we can print messages to console and write important messages to logs.</param>
         public Commander(Logger _logger)
         {
             mapper = new();
@@ -43,6 +47,10 @@ namespace EasyDataMigrator.Modules
             InitSystemVariables();
         }
 
+        /// <summary>
+        /// Function where we will initialize/create system vars that will be used to alter logic an flow of the program.
+        /// These variables may be refilled be CustomQueries using the %VariableName instead of $VariableName so we may diferentiate between System Variables and User Variables.
+        /// </summary>
         private void InitSystemVariables()
         {
             systemVariables["DestTableName"] = new Variable("DestTableName")
@@ -56,6 +64,9 @@ namespace EasyDataMigrator.Modules
             };
         }
 
+        /// <summary>
+        /// We command Mapper() to try to AutoMap originConnection and destConnection.
+        /// </summary>
         public void TryAutoMapping()
         {
             origConnection.Open();
@@ -77,7 +88,12 @@ namespace EasyDataMigrator.Modules
             }
         }
 
-        public void ExecuteQueries(Query.QueryType queryType, Query.QueryExecutionContext executionTime)
+        /// <summary>
+        /// This function executes queries (if any) on both connections with the QueryType and QueryExecutionContext especified as parameters.
+        /// </summary>
+        /// <param name="queryType">QueryType to be executed (Read/Execute)</param>
+        /// <param name="executionContext">QueryExecutionContext where the query is required to execute (BeforMigration, AfterMigration, BeforeTableMigration or AfterTableMigration)</param>
+        public void ExecuteQueries(Query.QueryType queryType, Query.QueryExecutionContext executionContext)
         {
             DbConnector connection = null;
             List<Query> queries = null;
@@ -89,7 +105,7 @@ namespace EasyDataMigrator.Modules
                 connection = origConnection;
 
                 if (connection != null)
-                    queries = connection.Queries.FindAll(query => query.ExecutionContext == executionTime && query.Type == queryType);
+                    queries = connection.Queries.FindAll(query => query.ExecutionContext == executionContext && query.Type == queryType);
 
                 if (queries != null && queries.Count > 0)
                     PerformQueries(connection, queries);
@@ -100,7 +116,7 @@ namespace EasyDataMigrator.Modules
                 connection = destConnection;
 
                 if (connection != null)
-                    queries = connection.Queries.FindAll(query => query.ExecutionContext == executionTime && query.Type == queryType);
+                    queries = connection.Queries.FindAll(query => query.ExecutionContext == executionContext && query.Type == queryType);
 
                 if (queries != null && queries.Count > 0)
                     PerformQueries(connection, queries);
@@ -109,6 +125,11 @@ namespace EasyDataMigrator.Modules
             logger.AlternateColors = false;
         }
 
+        /// <summary>
+        /// This function is the one that internally exeuctes queries but it can only be called by its "interface function" which is ExecuteQueries.
+        /// </summary>
+        /// <param name="connection"></param>
+        /// <param name="queries"></param>
         private void PerformQueries(DbConnector connection, List<Query> queries)
         {
             connection.Open();
@@ -205,6 +226,12 @@ namespace EasyDataMigrator.Modules
             connection.Close();
         }
 
+        /// <summary>
+        /// Helper function that will inject system and user-defined variables into the query passed by parameter.
+        /// </summary>
+        /// <param name="query"></param>
+        /// <param name="userVariables"></param>
+        /// <param name="systemVariables"></param>
         private static void ParametrizeQuery(Query query, Variables userVariables, Variables systemVariables)
         {
             if (query.Sql.Contains("$") && userVariables != null) // We determine if it is a user-parametrized query or not
@@ -244,6 +271,9 @@ namespace EasyDataMigrator.Modules
             }
         }
 
+        /// <summary>
+        /// Function that starts data migration.
+        /// </summary>
         public void BeginMigration()
         {
             List<TableMap> failedMigrations = new();
@@ -299,7 +329,10 @@ namespace EasyDataMigrator.Modules
             destConnection.Close();
         }
 
-
+        /// <summary>
+        /// Private function that migrates a table map.
+        /// </summary>
+        /// <param name="tableMap"></param>
         private void MigrateMap(TableMap tableMap)
         {
             logger.PrintNLog($"Inserting records from {tableMap.FromTable} to {tableMap.ToTable}.");
@@ -368,6 +401,10 @@ namespace EasyDataMigrator.Modules
             logger.PrintNLog($"Inserted records from {tableMap.FromTable} to {tableMap.ToTable} successfully!");
         }
 
+        /// <summary>
+        /// Private function to retry failed tablemap migrations.
+        /// </summary>
+        /// <param name="failedMigrations"></param>
         private void RetryFailedMigrations(List<TableMap> failedMigrations)
         {
             int maxRetries = Convert.ToInt32(ConfigurationManager.AppSettings["FailedMigrationsRetries"]);
@@ -449,6 +486,9 @@ namespace EasyDataMigrator.Modules
             }
         }
 
+        /// <summary>
+        /// Function that repeats the BeforeTableMigration queries to see if destination table status has changed from busy to not busy.
+        /// </summary>
         private void UpdateTableStatus()
         {
             ExecuteQueries(Query.QueryType.Read, Query.QueryExecutionContext.BeforeTableMigration);

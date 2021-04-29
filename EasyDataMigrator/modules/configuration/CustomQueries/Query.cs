@@ -3,7 +3,9 @@ using System.Configuration;
 
 namespace EasyDataMigrator.Modules.Configuration
 {
-
+    /// <summary>
+    /// Custom ConfigurationElement Query
+    /// </summary>
     public class Query : ConfigurationElement
     {
         private string _sql;
