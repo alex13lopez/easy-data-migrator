@@ -4,6 +4,9 @@ using System.Configuration;
 
 namespace EasyDataMigrator.Modules.Configuration
 {
+    /// <summary>
+    /// Custom Configuration Element Collection of Queries.
+    /// </summary>
     [ConfigurationCollection(typeof(Query), AddItemName = "Query", CollectionType = ConfigurationElementCollectionType.BasicMap)]
     public class Queries : ConfigurationElementCollection
     {

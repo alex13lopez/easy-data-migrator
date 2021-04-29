@@ -4,6 +4,9 @@ using System.IO;
 
 namespace EasyDataMigrator.Modules.Core
 {
+    /// <summary>
+    /// Class that manages the printing and writing jobs of the messages we pass to it.
+    /// </summary>
     public class Logger
     {
         private readonly System.DateTime _dateNow;

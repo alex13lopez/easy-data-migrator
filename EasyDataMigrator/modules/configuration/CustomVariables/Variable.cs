@@ -3,6 +3,9 @@ using System.Configuration;
 
 namespace EasyDataMigrator.Modules.Configuration
 {
+    /// <summary>
+    /// Custom ConfigurationElement Variable.
+    /// </summary>
     public class Variable : ConfigurationElement
     {
         private Type _type;

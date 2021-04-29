@@ -6,6 +6,10 @@ using System.Threading.Tasks;
 
 namespace EasyDataMigrator.Modules.Core
 {
+    /// <summary>
+    /// The last but not less important main core classes of the program. This class is the one in charge to generate the SQL commands dynamically for the TableMap
+    /// that we pass by parameters to its functions.
+    /// </summary>
     static class QueryBuilder
     {
         public static string Insert(TableMap TableMap)

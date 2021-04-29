@@ -7,6 +7,9 @@ using EasyDataMigrator.Modules.Configuration;
 
 namespace EasyDataMigrator.Modules.Core
 {
+    /// <summary>
+    /// The helper class to connect and perform operations in the DB.
+    /// </summary>
     public class DbConnector
     {
         private readonly SqlConnection _sqlConnection;
@@ -43,6 +46,12 @@ namespace EasyDataMigrator.Modules.Core
             LoadQueries();
         }
         
+        /// <summary>
+        /// Function that executes the SQL command passed by parameter and returns and SqlDataReader
+        /// </summary>
+        /// <param name="sql"></param>
+        /// <param name="transactionedQuery"></param>
+        /// <returns></returns>
         public SqlDataReader ReadDB(string sql, bool transactionedQuery = false) // Reading data operations, by default we do NOT require transaction since we are not modifying data on de DB
         {
             SqlCommand command;
@@ -66,6 +75,13 @@ namespace EasyDataMigrator.Modules.Core
             return command.ExecuteReader();
         }
 
+        /// <summary>
+        /// A helper function to return the specified column index value of the first row.
+        /// </summary>
+        /// <param name="sql"></param>
+        /// <param name="column"></param>
+        /// <param name="transactionedQuery"></param>
+        /// <returns>Object value</returns>
         public object GetFirst(string sql, int column = 0, bool transactionedQuery = false)
         {
             using (SqlDataReader dataR = ReadDB(sql, transactionedQuery))
@@ -79,6 +95,13 @@ namespace EasyDataMigrator.Modules.Core
             return null;
         }
 
+        /// <summary>
+        /// A helper function to return the specified column name value of the first row.
+        /// </summary>
+        /// <param name="sql"></param>
+        /// <param name="column"></param>
+        /// <param name="transactionedQuery"></param>
+        /// <returns>Object value</returns>
         public object GetFirst(string sql, string columnName, bool transactionedQuery = false)
         {
             using (SqlDataReader dataR = ReadDB(sql, transactionedQuery))
@@ -90,6 +113,12 @@ namespace EasyDataMigrator.Modules.Core
             return null;
         }
 
+        /// <summary>
+        /// Function to execute the SQL command passed by parameter that modifies data in the DB.
+        /// </summary>
+        /// <param name="sql"></param>
+        /// <param name="transactionedQuery"></param>
+        /// <returns>Number of affected rows</returns>
         public int ModifyDB(string sql, bool transactionedQuery = true) // Modify data operations, by default we DO require transaction since we are modifying data on de DB and something could go wrong
         {
             SqlCommand command;
@@ -122,6 +151,9 @@ namespace EasyDataMigrator.Modules.Core
             return adapter.UpdateCommand.ExecuteNonQuery();
         }
 
+        /// <summary>
+        /// Function that opens the connection to DB.
+        /// </summary>
         public void Open() 
         {
             try
@@ -134,25 +166,47 @@ namespace EasyDataMigrator.Modules.Core
                 string user = ex.Message.Remove(0, ex.Message.LastIndexOf(' ') + 1).Trim();
                 user = user.Remove(user.Length - 1);
                 string errMsg = $"Cannot find server {_sqlConnection.DataSource} make sure you have typed it correctly and the user {user} has access.";
-                throw new Exception(errMsg, ex);
+                throw new MigrationException(errMsg, MigrationException.ExceptionSeverityLevel.CRITICAL, ex);
             }
             catch (SqlException ex) when (ex.Number == 4060)
             {
                 string user = ex.Message.Remove(0, ex.Message.LastIndexOf(' ') + 1).Trim();
                 user = user.Remove(user.Length - 1);
                 string errMsg = $"Cannot open database '{_sqlConnection.Database}' from server '{_sqlConnection.DataSource}'. Make sure you have typed it correctly and the user {user} has access.";
-                throw new Exception(errMsg, ex);
+                throw new MigrationException(errMsg, MigrationException.ExceptionSeverityLevel.CRITICAL, ex);
             }
         }
 
+        /// <summary>
+        /// Function that closes the connection to DB.
+        /// </summary>
         public void Close() => _sqlConnection.Close();
+
+        /// <summary>
+        ///  Function to Begin a transaction in the DB.
+        /// </summary>
+        /// <param name="transName"></param>
         public void BeginTransaction(string transName = "DefaultTransaction") => _sqlTransaction = _sqlConnection.BeginTransaction(transName);
 
+        /// <summary>
+        ///  Function to Commit transactions in the DB.
+        /// </summary>
+        /// <param name="transName"></param>
         public void CommitTransaction() => _sqlTransaction.Commit();
 
+        /// <summary>
+        ///  Function to Rollback a transaction in the DB.
+        /// </summary>
+        /// <param name="transName"></param>
         public void RollBackTransaction(string transName = "DefaultTransaction") => _sqlTransaction.Rollback(transName);
 
-        public void BulkCopy(DataTable data,TableMap tableMap)
+        /// <summary>
+        /// Function that will use SqlBulkCopy that will copy data from a DataTable to the DB. 
+        /// Also known as "Bulk Insert Mode".
+        /// </summary>
+        /// <param name="data"></param>
+        /// <param name="tableMap"></param>
+        public void BulkCopy(DataTable data, TableMap tableMap)
         {
             using SqlBulkCopy bulkCopy = new(_sqlConnection, SqlBulkCopyOptions.KeepNulls, _sqlTransaction);
             int CommandTimeout;
@@ -178,6 +232,9 @@ namespace EasyDataMigrator.Modules.Core
             }            
         }
 
+        /// <summary>
+        /// Function that loads the queries of the connection so we can use them later.
+        /// </summary>
         private void LoadQueries()
         {
             Queries = new List<Query>();            

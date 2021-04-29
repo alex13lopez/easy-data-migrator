@@ -5,6 +5,9 @@ using System.Configuration;
 
 namespace EasyDataMigrator.Modules.Configuration
 {
+    /// <summary>
+    /// Custom Configuration collection of Variables.
+    /// </summary>
     [ConfigurationCollection(typeof(Variable), AddItemName = "Variable", CollectionType = ConfigurationElementCollectionType.BasicMap)]
     public class Variables : ConfigurationElementCollection
     {

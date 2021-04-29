@@ -3,13 +3,15 @@ using System.Configuration;
 
 namespace EasyDataMigrator.Modules.Configuration
 {
-
+    /// <summary>
+    /// Custom ConfigurationElement Query
+    /// </summary>
     public class Query : ConfigurationElement
     {
         private string _sql;
         private string _id;
         private QueryConnection _connection;
-        private QueryExecutionTime _executionTime;
+        private QueryExecutionContext _executionContext;
         private QueryType _type;
         private string _storeIn;
         private int _executionOrder;
@@ -32,7 +34,7 @@ namespace EasyDataMigrator.Modules.Configuration
             Null
         }
 
-        public enum QueryExecutionTime
+        public enum QueryExecutionContext
         {
             BeforeMigration, // It will be executed Before starting the migration of tables
             AfterMigration,  // It will be executed After ending the migration of tables
@@ -99,20 +101,20 @@ namespace EasyDataMigrator.Modules.Configuration
             }
         }
 
-        [ConfigurationProperty("executionTime", IsRequired = true)]
-        public QueryExecutionTime ExecutionTime
+        [ConfigurationProperty("executionContext", IsRequired = true)]
+        public QueryExecutionContext ExecutionContext
         {
             get
             {
-                if (_executionTime == QueryExecutionTime.Null)
-                    _executionTime = (QueryExecutionTime)this["executionTime"];
+                if (_executionContext == QueryExecutionContext.Null)
+                    _executionContext = (QueryExecutionContext)this["executionContext"];
 
-                return _executionTime;
+                return _executionContext;
             }
 
             private set
             {
-                _executionTime = value;
+                _executionContext = value;
             }
         }
 
@@ -174,7 +176,7 @@ namespace EasyDataMigrator.Modules.Configuration
             clone.Connection = Connection;
             clone.Sql = Sql;
             clone.Type = Type;
-            clone.ExecutionTime = ExecutionTime;
+            clone.ExecutionContext = ExecutionContext;
             clone.ID = ID + "_clone";
             clone.StoreIn = StoreIn;
             clone.ExecutionOrder = ExecutionOrder;
@@ -185,7 +187,7 @@ namespace EasyDataMigrator.Modules.Configuration
         private void InitQuery()
         {
             _executionOrder = -1;
-            _executionTime = QueryExecutionTime.Null;
+            _executionContext = QueryExecutionContext.Null;
             _type = QueryType.Null;           
         }
     }

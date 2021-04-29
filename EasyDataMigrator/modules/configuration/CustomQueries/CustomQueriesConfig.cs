@@ -3,6 +3,9 @@ using System.Configuration;
 
 namespace EasyDataMigrator.Modules.Configuration
 {
+    /// <summary>
+    /// Custom configuration section class for Queries.
+    /// </summary>
     public class CustomQueriesConfig : ConfigurationSection
     {
         public static CustomQueriesConfig GetConfig()
