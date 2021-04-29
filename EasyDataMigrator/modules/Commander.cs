@@ -75,7 +75,7 @@ namespace EasyDataMigrator.Modules
             }
         }
 
-        public void ExecuteQueries(Query.QueryType queryType, Query.QueryExecutionTime executionTime)
+        public void ExecuteQueries(Query.QueryType queryType, Query.QueryExecutionContext executionTime)
         {
             DbConnector connection = null;
             List<Query> queries = null;
@@ -87,7 +87,7 @@ namespace EasyDataMigrator.Modules
                 connection = origConnection;
 
                 if (connection != null)
-                    queries = connection.Queries.FindAll(query => query.ExecutionTime == executionTime && query.Type == queryType);
+                    queries = connection.Queries.FindAll(query => query.ExecutionContext == executionTime && query.Type == queryType);
 
                 if (queries != null && queries.Count > 0)
                     PerformQueries(connection, queries);
@@ -98,7 +98,7 @@ namespace EasyDataMigrator.Modules
                 connection = destConnection;
 
                 if (connection != null)
-                    queries = connection.Queries.FindAll(query => query.ExecutionTime == executionTime && query.Type == queryType);
+                    queries = connection.Queries.FindAll(query => query.ExecutionContext == executionTime && query.Type == queryType);
 
                 if (queries != null && queries.Count > 0)
                     PerformQueries(connection, queries);
@@ -252,8 +252,8 @@ namespace EasyDataMigrator.Modules
                 systemVariables["DestTableName"].TrueValue = tableMap.ToTableName;
 
                 // Before Table Migration queries
-                ExecuteQueries(Query.QueryType.Read, Query.QueryExecutionTime.BeforeTableMigration);
-                ExecuteQueries(Query.QueryType.Execute, Query.QueryExecutionTime.BeforeTableMigration);
+                ExecuteQueries(Query.QueryType.Read, Query.QueryExecutionContext.BeforeTableMigration);
+                ExecuteQueries(Query.QueryType.Execute, Query.QueryExecutionContext.BeforeTableMigration);
 
                 if (UseControlMech)
                 {
@@ -284,8 +284,8 @@ namespace EasyDataMigrator.Modules
                 if(migrationSucceded)
                 {
                     // After Table Migration queries
-                    ExecuteQueries(Query.QueryType.Read, Query.QueryExecutionTime.AfterTableMigration);
-                    ExecuteQueries(Query.QueryType.Execute, Query.QueryExecutionTime.AfterTableMigration);
+                    ExecuteQueries(Query.QueryType.Read, Query.QueryExecutionContext.AfterTableMigration);
+                    ExecuteQueries(Query.QueryType.Execute, Query.QueryExecutionContext.AfterTableMigration);
                 }
 
                 if (failedMigrations.Count > 0)
@@ -445,8 +445,8 @@ namespace EasyDataMigrator.Modules
 
         private void UpdateTableStatus()
         {
-            ExecuteQueries(Query.QueryType.Read, Query.QueryExecutionTime.BeforeTableMigration);
-            ExecuteQueries(Query.QueryType.Execute, Query.QueryExecutionTime.BeforeTableMigration);
+            ExecuteQueries(Query.QueryType.Read, Query.QueryExecutionContext.BeforeTableMigration);
+            ExecuteQueries(Query.QueryType.Execute, Query.QueryExecutionContext.BeforeTableMigration);
         }
     }
 }

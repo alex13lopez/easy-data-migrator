@@ -13,11 +13,11 @@
 
   <appSettings>
     <add key="LogPath" value=".\Logs\"/>
-    <add key="SearchOriginPattern" value="SLIM_"/>
+    <add key="SearchOriginPattern" value=""/>
     <add key="SearchDestPattern" value=""/>
     <add key="excludePatternFromMatch" value="True"/>
     <add key="GetTablesQuery" value="select t.Name as TableName,c.Name as ColumnName from sys.objects t inner join sys.all_columns c on t.object_id = c.object_id where t.type in ('U','V')"/>
-    <add key ="UseBulkCopyTables" value="SLIM_S4Import_Transactions"/>
+    <add key ="UseBulkCopyTables" value=""/>
     <add key="RetryFailedMigrations" value="5"/>
     <add key="WaitTimeBusyTables" value="60"/>
     <add key="MaxQueryTimeout" value="60"/>
@@ -35,12 +35,12 @@
   
   <CustomQueries>
     <Queries>
-      <Query id="PremigrationConfig" connection="OriginConnection" sqlCommand="EXEC OrigSV.OrigDB.DBO.pPers_SLIM_Migration_Conf" type="Execute" executionTime="BeforeMigration" executionOrder="1"/>
-      <Query id="GetTableId" connection="OriginConnection" sqlCommand="SELECT Value FROM OrigSV.OrigDB.DBO.SLIM_ParametrosConfiguracion WHERE ParameterName = %DestTableName" type="Read" executionTime="BeforeTableMigration" storeIn="$TABLEID" executionOrder="1"/>
-      <Query id="GetDestTableStatus" connection="DestinationConnection" sqlCommand="SELECT CASE WHEN controlStatus in (1,4) THEN 'False' ELSE 'True' END AS Busy FROM DestSV.DestDB.dbo.ImportControl WHERE importType = $TABLEID" type="Read" executionTime="BeforeTableMigration" storeIn="%DestTableIsBusy" executionOrder="2"/>
-      <Query id="GetTimestamp" connection="OriginConnection" sqlCommand="SELECT FORMAT(GETDATE(), 'yyyyMMdd_HHmmss') AS Timestamp" type="Read" executionTime="AfterTableMigration" storeIn="$TIMESTAMP" executionOrder="1"/>
-      <Query id="GetTableIdForStatusUpd" connection="OriginConnection" sqlCommand="SELECT Value FROM OrigSV.OrigDB.DBO.SLIM_ParametrosConfiguracion WHERE ParameterName = %DestTableName" type="Read" executionTime="AfterTableMigration" storeIn="$TABLEID" executionOrder="1"/>
-      <Query id="UpdateDestTableStatus" connection="DestinationConnection" sqlCommand="UPDATE DestSV.DestDB.dbo.ImportControl SET controlStatus = 1, controlTimestamp = $TIMESTAMP WHERE importType = $TABLEID" type="Execute" executionTime="AfterTableMigration" executionOrder="2"/>
+      <Query id="PremigrationConfig" connection="OriginConnection" sqlCommand="EXEC OrigSV.OrigDB.DBO.pPers_SLIM_Migration_Conf" type="Execute" executionContext="BeforeMigration" executionOrder="1"/>
+      <Query id="GetTableId" connection="OriginConnection" sqlCommand="SELECT Value FROM OrigSV.OrigDB.DBO.SLIM_ParametrosConfiguracion WHERE ParameterName = %DestTableName" type="Read" executionContext="BeforeTableMigration" storeIn="$TABLEID" executionOrder="1"/>
+      <Query id="GetDestTableStatus" connection="DestinationConnection" sqlCommand="SELECT CASE WHEN controlStatus in (1,4) THEN 'False' ELSE 'True' END AS Busy FROM DestSV.DestDB.dbo.ImportControl WHERE importType = $TABLEID" type="Read" executionContext="BeforeTableMigration" storeIn="%DestTableIsBusy" executionOrder="2"/>
+      <Query id="GetTimestamp" connection="OriginConnection" sqlCommand="SELECT FORMAT(GETDATE(), 'yyyyMMdd_HHmmss') AS Timestamp" type="Read" executionContext="AfterTableMigration" storeIn="$TIMESTAMP" executionOrder="1"/>
+      <Query id="GetTableIdForStatusUpd" connection="OriginConnection" sqlCommand="SELECT Value FROM OrigSV.OrigDB.DBO.SLIM_ParametrosConfiguracion WHERE ParameterName = %DestTableName" type="Read" executionContext="AfterTableMigration" storeIn="$TABLEID" executionOrder="1"/>
+      <Query id="UpdateDestTableStatus" connection="DestinationConnection" sqlCommand="UPDATE DestSV.DestDB.dbo.ImportControl SET controlStatus = 1, controlTimestamp = $TIMESTAMP WHERE importType = $TABLEID" type="Execute" executionContext="AfterTableMigration" executionOrder="2"/>
     </Queries>
   </CustomQueries>
   
