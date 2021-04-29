@@ -2,6 +2,9 @@
 This project aims to provide an easy-to-use and plug-n-play tool to easily migrate between to DataBases. For now, only SQL Server is supoorted, but the future idea is to support
 the most used and most popular DataBases for production, such as POSTGRESQL, MariaDB/MySQL, SQLite and Oracle.
 
+# REQUIREMENTS
+* Just one: .NET 5
+
 # FEATURES
 * **AutoMap:** Easily migrate data between two SQL Servers with little to no configuration at all since the tool searches in both DB for tables and fields 
 that are named equally and maps them together for migration.
