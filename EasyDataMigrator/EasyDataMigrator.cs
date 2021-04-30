@@ -75,8 +75,8 @@ namespace EasyDataMigrator
 #if DEBUG
                 Console.ReadKey();
 
-                return; // A critical exception is fatal so the program cannot continue
 #endif
+                return; // A critical exception is fatal so the program cannot continue
             }
             catch (Exception ex)
             {
