@@ -69,6 +69,8 @@ namespace EasyDataMigrator.Modules
         /// </summary>
         public void TryAutoMapping()
         {
+            logger.Print($"Trying to AutoMap Origin DataBase '{origConnection.ServerName}.{origConnection.DataBaseName}' to Destination DataBase '{destConnection.ServerName}.{destConnection.DataBaseName}'");
+
             origConnection.Open();
             destConnection.Open();
             mapper.AutoMap(origConnection, destConnection, OriginPattern, DestinationPattern, excludePatternFromMatch);
@@ -85,6 +87,10 @@ namespace EasyDataMigrator.Modules
             if (totalPrecision < precisionThreshold)
             {
                 throw new MigrationException($"Precision threshold of {precisionThreshold}% has not been reached! Aborting migration.", MigrationException.ExceptionSeverityLevel.CRITICAL);
+            }
+            else
+            {
+                logger.Print("Automapping successfull!");
             }
         }
 

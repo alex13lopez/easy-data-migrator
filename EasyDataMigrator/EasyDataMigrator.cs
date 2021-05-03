@@ -74,7 +74,6 @@ namespace EasyDataMigrator
                     commander.DestConnection.Close();
 #if DEBUG
                 Console.ReadKey();
-
 #endif
                 return; // A critical exception is fatal so the program cannot continue
             }
