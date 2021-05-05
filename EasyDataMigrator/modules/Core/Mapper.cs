@@ -94,6 +94,11 @@ namespace EasyDataMigrator.Modules.Core
             return mapCount > 0 ? Math.Round(((decimal)matchedCount / (decimal)mapCount), 2) * 100 : 0; // We return the success percentage
         }
 
+        internal void SaveMap(string saveToMap)
+        {
+            throw new NotImplementedException();
+        }
+
         private TableMap FindOrCreateTableMap(TableMap tableMap)
         {
             TableMap tMap = _tableMaps.Find(t => t.MapId == tableMap.MapId);
@@ -107,6 +112,10 @@ namespace EasyDataMigrator.Modules.Core
             return tMap;
         }
 
+        internal void LoadMap(string mapToUse)
+        {
+            throw new NotImplementedException();
+        }
 
         private decimal CreateFieldMaps(DataTable originTable, DataTable destTable)
         {
