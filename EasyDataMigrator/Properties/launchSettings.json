@@ -2,7 +2,7 @@
   "profiles": {
     "EasyDataMigrator": {
       "commandName": "Project",
-      "commandLineArgs": "-l"
+      "commandLineArgs": "-m default"
     }
   }
 }

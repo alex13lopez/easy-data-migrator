@@ -156,10 +156,12 @@ namespace EasyDataMigrator
         /// <param name="commander"></param>
         private static void Migrate(Logger logger, Commander commander, string mapToUse = null, bool fullPath = false)
         {
-            static void StartMigration(Logger logger, Commander commander)
+            static void StartMigration(Logger logger, Commander commander, string mapToUse = null)
             {
                 logger.PrintNLog("Migration process started.");
-                logger.PrintNLog($"Mapping precision -> TABLES: {commander.Mapper.TableMapPrecision} | FIELDS: {commander.Mapper.FieldMapPrecision}");
+
+                if (string.IsNullOrWhiteSpace(mapToUse)) // We're not using a saved migration, so we want to know what precision do we have for this automatic migration
+                    logger.PrintNLog($"Mapping precision -> TABLES: {commander.Mapper.TableMapPrecision} | FIELDS: {commander.Mapper.FieldMapPrecision}");
 
                 // First, we always execute the "Read" type queries because we might need their results for execute queries
                 commander.ExecuteQueries(Query.QueryType.Read, Query.QueryExecutionContext.BeforeMigration);
@@ -186,7 +188,7 @@ namespace EasyDataMigrator
                 else if (!string.IsNullOrEmpty(mapToUse))
                 {
                     commander.Mapper.LoadMaps(mapToUse, fullPath);
-                    StartMigration(logger, commander);
+                    StartMigration(logger, commander, mapToUse);
                 }
                 else
                 {

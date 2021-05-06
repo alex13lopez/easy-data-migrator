@@ -39,16 +39,16 @@ namespace EasyDataMigrator.Modules.Core
         public List<FieldMap> FieldMaps { get => _fieldMaps; private set => _fieldMaps = value; }
 
 
-        public TableMap(string originServer, string destinationServer, string originDataBase, string destinationDataBase, string fromTable, string toTable, bool useBulkCopy = false, bool destinationTableBusy = false, List<FieldMap> fieldMaps = null)
+        public TableMap(string originServer, string destinationServer, string originDataBase, string destinationDataBase, string fromTableName, string toTableName, bool useBulkCopy = false, bool destinationTableBusy = false, List<FieldMap> fieldMaps = null)
         {            
             OriginServer = originServer;
             DestinationServer = destinationServer;
             OriginDataBase = originDataBase;
             DestinationDataBase = destinationDataBase;
-            FromTable = fromTable;
-            ToTable = toTable;
-            FromTableName = fromTable;
-            ToTableName = toTable;
+            FromTableName = fromTableName;
+            ToTableName = toTableName;
+            FromTable = fromTableName;
+            ToTable = toTableName;
             MapId = FromTable + '-' + ToTable;
             UseBulkCopy = useBulkCopy;
             DestinationTableBusy = destinationTableBusy;
