@@ -154,11 +154,11 @@ namespace EasyDataMigrator.Modules
                 if (userVariables != null || systemVariables != null)
                     ParametrizeQuery(opQuery, userVariables, systemVariables);
 
+                        Variable userVar = null, sysVar = null;
                 try
                 {
                     if (!string.IsNullOrWhiteSpace(opQuery.StoreIn) && opQuery.Type == Query.QueryType.Read)
                     {
-                        Variable userVar = null, sysVar = null;
 
                         if (userVariables != null)
                         {
@@ -215,7 +215,16 @@ namespace EasyDataMigrator.Modules
                 catch (FormatException ex)
                 {
                     connection.Close();
-                    throw new MigrationException(ex.Message, MigrationException.ExceptionSeverityLevel.CRITICAL, ex);
+                    string errMessage = null;
+
+                    if (sysVar != null)
+                        errMessage = $"Input string was not in a correct format. Cannot convert '{sysVar.Value}' to '{sysVar.Type.Name}'. This value is for SystemVariable: '{sysVar.Name}' and is obtained from CustomQuery: '{opQuery.OriginalID}'";
+                    else if (userVar != null)
+                        errMessage = $"Input string was not in a correct format. Cannot convert '{userVar.Value}' to '{userVar.Type.Name}'. This value is for CustomVariable: '{userVar.Name}' and is obtained from CustomQuery: '{opQuery.OriginalID}'";
+                    else
+                        errMessage = ex.Message;
+
+                    throw new MigrationException(errMessage, MigrationException.ExceptionSeverityLevel.CRITICAL, ex);
                 }
                 catch (OverflowException ex)
                 {
@@ -327,10 +336,10 @@ namespace EasyDataMigrator.Modules
                     ExecuteQueries(Query.QueryType.Read, Query.QueryExecutionContext.AfterTableMigration);
                     ExecuteQueries(Query.QueryType.Execute, Query.QueryExecutionContext.AfterTableMigration);
                 }
-
-                if (failedMigrations.Count > 0)
-                    RetryFailedMigrations(failedMigrations);
             }
+
+            if (failedMigrations.Count > 0)
+                RetryFailedMigrations(failedMigrations);
 
             destConnection.Close();
         }

@@ -56,10 +56,10 @@ namespace EasyDataMigrator.Modules.Core
                     Console.ForegroundColor = !AlternateColors ? ConsoleColor.Yellow : ConsoleColor.DarkYellow;
                     break;
                 case LogType.ERROR:
-                    Console.ForegroundColor = !AlternateColors ? ConsoleColor.Red : ConsoleColor.Magenta;
+                    Console.ForegroundColor = !AlternateColors ? ConsoleColor.DarkRed : ConsoleColor.DarkMagenta;
                     break;
                 case LogType.CRITICAL:
-                    Console.ForegroundColor = !AlternateColors ? ConsoleColor.DarkRed : ConsoleColor.DarkMagenta;
+                    Console.ForegroundColor = ConsoleColor.Red; // A critical is a fatal error so it must be very flashing, that's why its always pure red.
                     break;
                 default:
                     break;
