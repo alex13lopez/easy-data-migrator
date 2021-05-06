@@ -18,13 +18,16 @@ namespace EasyDataMigrator
             public string Migrate { get; set; }
 
             [Option('A', "automap", HelpText = "Just AutoMap and save mapping.", SetName = "mapping")]
-            public string Map { get; set; }          
+            public string AutoMap { get; set; }          
 
             [Option('a', "automigrate", HelpText = "AutoMap and start migration with generated map", SetName = "create_migration")]
             public bool AutoMigrate { get; set; }
 
             [Option('s', "savemap", HelpText = "If AutoMigrate succeeds, this map will be saved for later use.", SetName = "create_migration", Default = null)]
             public string SaveMap { get; set;  }
+
+            [Option('f', "fullpath", HelpText = "Indicates if the path provided for -s|--savemap is a full path or just the name of the map that it will load from the MapsLocation setting in App.config.", Default = false)]
+            public bool FullPath { get; set; }
         }
 
         static void Main(string[] args)
@@ -43,8 +46,8 @@ namespace EasyDataMigrator
                     if (!string.IsNullOrWhiteSpace(o.Migrate))
                         Migrate(logger, commander, o.Migrate);
 
-                    if (!string.IsNullOrWhiteSpace(o.Map))
-                        Map(logger, commander, true, o.Map);
+                    if (!string.IsNullOrWhiteSpace(o.AutoMap))
+                        Map(logger, commander, true, o.AutoMap, o.FullPath);
                 });
             }
             catch (ArgumentNullException ex)
@@ -66,7 +69,7 @@ namespace EasyDataMigrator
         /// <param name="commander"></param>
         /// <param name="save"></param>
         /// <param name="SaveToMap"></param>
-        private static void Map(Logger logger, Commander commander, bool save = false, string SaveToMap = null)
+        private static void Map(Logger logger, Commander commander, bool save = false, string SaveToMap = null, bool fullPath = false)
         {
             try
             {
@@ -106,7 +109,7 @@ namespace EasyDataMigrator
 
             // We save the map if user wants us to do so
             if (save)
-                commander.Mapper.SaveMap(SaveToMap);
+                commander.Mapper.SaveMaps(SaveToMap, fullPath);
         }
 
         /// <summary>
@@ -165,7 +168,7 @@ namespace EasyDataMigrator
                 // If we specified that map we load that map and then start migration.
                 else if (!string.IsNullOrEmpty(mapToUse))
                 {
-                    commander.Mapper.LoadMap(mapToUse);
+                    commander.Mapper.LoadMaps(mapToUse);
                     StartMigration(logger, commander);
                 }
                 else

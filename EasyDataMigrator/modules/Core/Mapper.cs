@@ -1,9 +1,13 @@
-﻿using System.Linq;
-using System.Collections.Generic;
-using System.Data.SqlClient;
-using System.Configuration;
+﻿using System;
 using System.Data;
-using System;
+using System.Linq;
+using System.Data.SqlClient;
+using System.Collections.Generic;
+using System.Configuration;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.IO;
+using System.Text.RegularExpressions;
 
 namespace EasyDataMigrator.Modules.Core
 {
@@ -92,12 +96,7 @@ namespace EasyDataMigrator.Modules.Core
             }            
 
             return mapCount > 0 ? Math.Round(((decimal)matchedCount / (decimal)mapCount), 2) * 100 : 0; // We return the success percentage
-        }
-
-        internal void SaveMap(string saveToMap)
-        {
-            throw new NotImplementedException();
-        }
+        }        
 
         private TableMap FindOrCreateTableMap(TableMap tableMap)
         {
@@ -111,12 +110,7 @@ namespace EasyDataMigrator.Modules.Core
 
             return tMap;
         }
-
-        internal void LoadMap(string mapToUse)
-        {
-            throw new NotImplementedException();
-        }
-
+        
         private decimal CreateFieldMaps(DataTable originTable, DataTable destTable)
         {
             int matchedCount = 0, mapCount = 0;
@@ -146,6 +140,71 @@ namespace EasyDataMigrator.Modules.Core
             }
 
             return mapCount > 0 ? Math.Round(((decimal)matchedCount / (decimal)mapCount), 2) * 100 : 0; // We return the success percentage
-        }        
+        }
+
+        public void SaveMaps(string fileName, bool fullPath = false)
+        {
+            string filePath;
+
+            if (!fullPath)
+            {
+                filePath = ConfigurationManager.AppSettings["MapsLocation"];
+            
+                if (string.IsNullOrWhiteSpace(filePath))
+                    filePath = @".\Maps\" ;
+            }
+            else
+            {
+                filePath = Path.GetDirectoryName(fileName);
+            }
+
+            bool filenameIsValidated = ValidateFileName(fileName);
+
+            if (filenameIsValidated)
+            {
+                fileName = @".\Maps\" + fileName + ".tablemaps";
+            }
+
+            if (!fullPath && !filenameIsValidated)
+                throw new ArgumentOutOfRangeException(nameof(fileName), $"The file name specified is not valid. It can only contain numbers, letters, dashes, underscores and have a maximum length of 200 characters (Extension will be added automatically).{Environment.NewLine}Please if it is a path use -f|--fullpath.");
+            else if (fullPath && !ValidateFullPath(fileName))
+                throw new ArgumentOutOfRangeException(nameof(fileName), $"The file path specified is not valid. It can only contain numbers, letters, dots, dashes and underscores, colons, slashes, backslashes and have a maximum length of 255 characters (You may or may not use extension for your files).{Environment.NewLine}");            
+
+            byte[] dataBytes;
+            var options = new JsonSerializerOptions { WriteIndented = true };
+
+            dataBytes = JsonSerializer.SerializeToUtf8Bytes<List<TableMap>>(_tableMaps, options);
+            try
+            {
+                File.WriteAllBytes(fileName, dataBytes);
+            }
+            catch (DirectoryNotFoundException)
+            {
+                Directory.CreateDirectory(filePath);
+                SaveMaps(fileName, fullPath);
+            }
+        }
+
+        public static bool ValidateFileName(string fileName)
+        {
+            // File names can only contain numbers, letters, dashes, underscore and have a maximum length of 200 characters.
+            string pattern = @"^([a-zA-Z0-9\-_]){1,200}$";
+            return stringIsValid(fileName, pattern); 
+        }
+
+        public static bool ValidateFullPath(string fullPath) 
+        {
+            // File paths can only contain numbers, letters, dashes, underscores, slashes, backslashes, colons and have a maximum length of 255 characters.
+            string pattern = @"^([a-zA-Z0-9\-_.:\\/ ]){1,255}$";
+            return stringIsValid(fullPath, pattern);
+        } 
+
+        public static bool stringIsValid(string toValidate, string validationPattern) => new Regex(validationPattern).IsMatch(toValidate);
+
+        public void LoadMaps(string fileName)
+        {
+            throw new NotImplementedException();
+        }
+
     }
 }
