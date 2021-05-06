@@ -171,7 +171,7 @@ namespace EasyDataMigrator.Modules.Core
                 throw new ArgumentOutOfRangeException(nameof(fileName), $"The file path specified is not valid. It can only contain numbers, letters, dots, dashes and underscores, colons, slashes, backslashes and have a maximum length of 255 characters (You may or may not use extension for your files).{Environment.NewLine}");            
 
             byte[] dataBytes;
-            var options = new JsonSerializerOptions { WriteIndented = true };
+            JsonSerializerOptions options = new() { WriteIndented = true };
 
             dataBytes = JsonSerializer.SerializeToUtf8Bytes<List<TableMap>>(_tableMaps, options);
             try
@@ -201,9 +201,27 @@ namespace EasyDataMigrator.Modules.Core
 
         public static bool stringIsValid(string toValidate, string validationPattern) => new Regex(validationPattern).IsMatch(toValidate);
 
-        public void LoadMaps(string fileName)
+        public void LoadMaps(string fileName, bool fullPath = false)
         {
-            throw new NotImplementedException();
+            bool filenameIsValidated = ValidateFileName(fileName);
+
+            if (filenameIsValidated)
+            {
+                fileName = @".\Maps\" + fileName + ".tablemaps";
+            }
+
+            if (!fullPath && !filenameIsValidated)
+                throw new ArgumentOutOfRangeException(nameof(fileName), $"The file name specified is not valid. It can only contain numbers, letters, dashes, underscores and have a maximum length of 200 characters (Extension will be added automatically).{Environment.NewLine}Please if it is a path use -f|--fullpath.");
+            else if (fullPath && !ValidateFullPath(fileName))
+                throw new ArgumentOutOfRangeException(nameof(fileName), $"The file path specified is not valid. It can only contain numbers, letters, dots, dashes and underscores, colons, slashes, backslashes and have a maximum length of 255 characters (You may or may not use extension for your files).{Environment.NewLine}");
+
+
+            string jsonString = File.ReadAllText(fileName);
+            JsonSerializerOptions options = new() { AllowTrailingCommas = true, IncludeFields = true, PropertyNameCaseInsensitive = true };
+
+            _tableMaps = JsonSerializer.Deserialize<List<TableMap>>(jsonString, options);
+
+            return;
         }
 
     }

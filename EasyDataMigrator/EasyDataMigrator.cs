@@ -1,9 +1,12 @@
 ﻿using System;
+using System.Configuration;
 using EasyDataMigrator.Modules;
 using EasyDataMigrator.Modules.Core;
 using EasyDataMigrator.Modules.Configuration;
 using CommandLine;
 using CommandLine.Text;
+using System.Collections.Generic;
+using System.IO;
 
 namespace EasyDataMigrator
 {
@@ -28,6 +31,9 @@ namespace EasyDataMigrator
 
             [Option('f', "fullpath", HelpText = "Indicates if the path provided for -s|--savemap is a full path or just the name of the map that it will load from the MapsLocation setting in App.config.", Default = false)]
             public bool FullPath { get; set; }
+
+            [Option('l', "listmaps", HelpText = "Gets a lists of TableMaps in default MapsLocation setting in App.config.")]
+            public bool ListMaps { get; set; }
         }
 
         static void Main(string[] args)
@@ -41,13 +47,16 @@ namespace EasyDataMigrator
                 options.WithParsed<Options>(o =>
                 {
                     if (o.AutoMigrate)
-                        AutoMigrate(logger, commander, o.SaveMap);
+                        AutoMigrate(logger, commander, o.SaveMap, o.FullPath);
                
                     if (!string.IsNullOrWhiteSpace(o.Migrate))
-                        Migrate(logger, commander, o.Migrate);
+                        Migrate(logger, commander, o.Migrate, o.FullPath);
 
                     if (!string.IsNullOrWhiteSpace(o.AutoMap))
                         Map(logger, commander, true, o.AutoMap, o.FullPath);
+
+                    if (o.ListMaps)
+                        ListMaps();
                 });
             }
             catch (ArgumentNullException ex)
@@ -60,7 +69,27 @@ namespace EasyDataMigrator
             }
 
              
-        }        
+        }
+
+        /// <summary>
+        /// Function that prints to console the list of saved maps in MapsLocation
+        /// </summary>
+        private static void ListMaps()
+        {
+            string mapsLocation = ConfigurationManager.AppSettings["MapsLocation"];
+
+            string[] TableMaps = Directory.GetFiles(mapsLocation, "*.tablemaps", SearchOption.TopDirectoryOnly);
+
+            string message = $"Available TableMaps in '{mapsLocation}':{Environment.NewLine}";
+            TableMaps.ForEach(file => 
+                        {
+                            string t = file.Replace(mapsLocation, ""); // We remove the path
+                            t = t.Replace(".tablemaps", ""); // We remove the extension
+                            message += $"\t- {t}{Environment.NewLine}";
+                        });
+
+            Console.WriteLine(message);
+        }
 
         /// <summary>
         /// Function that tries to AutoMap and allows us to save the map if specified so.
@@ -78,32 +107,23 @@ namespace EasyDataMigrator
             catch (MigrationException ex) when (ex.SeverityLevel == MigrationException.ExceptionSeverityLevel.WARNING)
             {
                 logger.PrintNLog(ex.Message, Logger.LogType.WARNING);
-#if DEBUG
-                Console.ReadKey();
-#endif
             }
             catch (MigrationException ex) when (ex.SeverityLevel == MigrationException.ExceptionSeverityLevel.ERROR)
             {
                 logger.PrintNLog(ex.Message, Logger.LogType.ERROR);
-#if DEBUG
-                Console.ReadKey();
-#endif
+
                 return;
             }
             catch (MigrationException ex) when (ex.SeverityLevel == MigrationException.ExceptionSeverityLevel.CRITICAL)
             {
                 logger.PrintNLog(ex.Message, Logger.LogType.CRITICAL);
-#if DEBUG
-                Console.ReadKey();
-#endif
+
                 return;
             }
             catch (Exception ex)
             {
                 logger.PrintNLog(ex.Message, Logger.LogType.CRITICAL);
-#if DEBUG
-                Console.ReadKey();
-#endif
+
                 return;
             }
 
@@ -118,12 +138,12 @@ namespace EasyDataMigrator
         /// <param name="logger"></param>
         /// <param name="commander"></param>
         /// <param name="SaveToMap"></param>
-        private static void AutoMigrate(Logger logger, Commander commander, string SaveToMap = null)
+        private static void AutoMigrate(Logger logger, Commander commander, string SaveToMap = null, bool fullPath = false)
         {
             if (string.IsNullOrWhiteSpace(SaveToMap))
                 Map(logger, commander);
             else
-                Map(logger, commander, true, SaveToMap);
+                Map(logger, commander, true, SaveToMap, fullPath);
 
             Migrate(logger, commander);
         }
@@ -134,7 +154,7 @@ namespace EasyDataMigrator
         /// <param name="mapToUse"></param>
         /// <param name="logger"></param>
         /// <param name="commander"></param>
-        private static void Migrate(Logger logger, Commander commander, string mapToUse = null)
+        private static void Migrate(Logger logger, Commander commander, string mapToUse = null, bool fullPath = false)
         {
             static void StartMigration(Logger logger, Commander commander)
             {
@@ -152,9 +172,6 @@ namespace EasyDataMigrator
 
                 logger.PrintNLog("Migration process ended with success.");
 
-#if DEBUG
-                Console.ReadKey();
-#endif
             }
 
             try
@@ -168,7 +185,7 @@ namespace EasyDataMigrator
                 // If we specified that map we load that map and then start migration.
                 else if (!string.IsNullOrEmpty(mapToUse))
                 {
-                    commander.Mapper.LoadMaps(mapToUse);
+                    commander.Mapper.LoadMaps(mapToUse, fullPath);
                     StartMigration(logger, commander);
                 }
                 else
@@ -188,9 +205,7 @@ namespace EasyDataMigrator
 
                 if (commander.DestConnection.SqlConnection.State == System.Data.ConnectionState.Open)
                     commander.DestConnection.Close();
-#if DEBUG
-                Console.ReadKey();
-#endif
+
                 return; // A critical exception is fatal so the program cannot continue
             }
             catch (Exception ex)
@@ -203,9 +218,7 @@ namespace EasyDataMigrator
 
                 if (commander.DestConnection.SqlConnection.State == System.Data.ConnectionState.Open)
                     commander.DestConnection.Close();
-#if DEBUG
-                Console.ReadKey();
-#endif
+
                 return; // An uncaught exception is an unknown severity kind of exception so we are uncertain if we can continue with the execution or not
             }
         }

@@ -22,6 +22,8 @@ namespace EasyDataMigrator.Modules.Core
         // If useBulkCopy is active, we will load the table into memory and then we will copy to destination server
         // This is used for tables that contain a lot of records so we can load them be doing several inserts instead of only one
         private bool _useBulkCopy;
+       
+        private List<FieldMap> _fieldMaps = new();
 
         public string MapId { get => _mapId; private set => _mapId = value; }
         public string OriginServer { get => _originServer; private set => _originServer = value; }
@@ -34,26 +36,26 @@ namespace EasyDataMigrator.Modules.Core
         public string ToTableName { get; private set; }        
         public bool UseBulkCopy { get => _useBulkCopy; set => _useBulkCopy = value; }
         public bool DestinationTableBusy { get; private set; }
+        public List<FieldMap> FieldMaps { get => _fieldMaps; private set => _fieldMaps = value; }
 
 
-        public TableMap(string originServer, string destinationServer, string originDB, string destinationDB,string fromTable, string toTable, bool useBulkCopy = false, bool destinationTableBusy = false)
+        public TableMap(string originServer, string destinationServer, string originDataBase, string destinationDataBase, string fromTable, string toTable, bool useBulkCopy = false, bool destinationTableBusy = false, List<FieldMap> fieldMaps = null)
         {            
             OriginServer = originServer;
             DestinationServer = destinationServer;
-            OriginDataBase = originDB;
-            DestinationDataBase = destinationDB;
+            OriginDataBase = originDataBase;
+            DestinationDataBase = destinationDataBase;
             FromTable = fromTable;
             ToTable = toTable;
             FromTableName = fromTable;
             ToTableName = toTable;
             MapId = FromTable + '-' + ToTable;
-            _useBulkCopy = useBulkCopy;
+            UseBulkCopy = useBulkCopy;
             DestinationTableBusy = destinationTableBusy;
-        }
 
-        private readonly List<FieldMap> _fieldMaps = new();
-
-        public List<FieldMap> FieldMaps { get => _fieldMaps; }
+            if (fieldMaps != null)
+                FieldMaps = fieldMaps;
+        }       
 
         public void AddFieldMap(FieldMap fieldMap) => _fieldMaps.Add(fieldMap);
     }
