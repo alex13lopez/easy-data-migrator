@@ -42,6 +42,12 @@ namespace EasyDataMigrator
             Commander commander = new(logger);
             ParserResult<Options> options = Parser.Default.ParseArguments<Options>(args);
 
+            if (args.Length <= 0)
+            {
+                Console.Write(HelpText.AutoBuild(options, null, null));
+                return;
+            }
+
             try
             {
                 options.WithParsed<Options>(o =>
@@ -62,7 +68,7 @@ namespace EasyDataMigrator
             catch (ArgumentNullException ex)
             {
                 logger.PrintNLog(ex.Message, Logger.LogType.CRITICAL);
-                logger.Print(HelpText.AutoBuild(options, null, null));
+                Console.Write(HelpText.AutoBuild(options, null, null));
 #if DEBUG
                 Console.ReadKey();
 #endif
@@ -162,6 +168,8 @@ namespace EasyDataMigrator
 
                 if (string.IsNullOrWhiteSpace(mapToUse)) // We're not using a saved migration, so we want to know what precision do we have for this automatic migration
                     logger.PrintNLog($"Mapping precision -> TABLES: {commander.Mapper.TableMapPrecision} | FIELDS: {commander.Mapper.FieldMapPrecision}");
+                else
+                    logger.PrintNLog($"Using saved map --> {mapToUse}.");
 
                 // First, we always execute the "Read" type queries because we might need their results for execute queries
                 commander.ExecuteQueries(Query.QueryType.Read, Query.QueryExecutionContext.BeforeMigration);

@@ -18,8 +18,9 @@ namespace EasyDataMigrator.Modules.Core
 
         public string ServerName { get; private set; }
         public string DataBaseName { get; private set; }             
-        public SqlConnection SqlConnection { get => _sqlConnection; }
+        public SqlConnection SqlConnection { get => _sqlConnection; }      
         public List<Query> Queries { get; private set; }
+        public SqlTransaction SqlTransaction { get => _sqlTransaction; }
 
         private void SetConnectionType(string ConnectionStringKey)
         {

@@ -375,7 +375,8 @@ namespace EasyDataMigrator.Modules
                     tableMap.UseBulkCopy = true;
 
                     // Secondly we rollback the changes
-                    destConnection.RollBackTransaction();
+                    if (destConnection.SqlTransaction.IsolationLevel == IsolationLevel.Serializable)
+                        destConnection.RollBackTransaction();
 
                     // Lastly we inform of what happened
                     logger.PrintNLog($"Migration {tableMap.MapId} exceeded timeout so changing to Bulk Mode. You should consider adding {tableMap.FromTable} to 'UseBulkCopyTables' list.", Logger.LogType.WARNING);

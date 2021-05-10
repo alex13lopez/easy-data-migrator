@@ -13,6 +13,7 @@
     <Configurations>Debug;Release;Alfa</Configurations>
     <Description>An easy program to quickly migrate data between two DataBases.</Description>
     <Copyright>Copyright Alex López © 2021</Copyright>
+    <ApplicationIcon>EasyDataMigrator.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
