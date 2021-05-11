@@ -188,7 +188,9 @@ namespace EasyDataMigrator.Modules.Configuration
         {
             _executionOrder = -1;
             _executionContext = QueryExecutionContext.Null;
-            _type = QueryType.Null;           
-        }
+            _type = QueryType.Null;
+            _connection = QueryConnection.Null;
+            _storeIn = null;
     }
+}
 }

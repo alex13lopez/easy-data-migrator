@@ -181,7 +181,7 @@ namespace EasyDataMigrator.Modules.Core
             catch (DirectoryNotFoundException)
             {
                 Directory.CreateDirectory(filePath);
-                SaveMaps(fileName, fullPath);
+                SaveMaps(fileName, true); // Here we pass true to fullPath because even though the user provided only a fileName, we converted it to fullpath by adding the default path ".\Maps"
             }
         }
 

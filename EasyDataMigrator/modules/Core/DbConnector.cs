@@ -20,7 +20,6 @@ namespace EasyDataMigrator.Modules.Core
         public string DataBaseName { get; private set; }             
         public SqlConnection SqlConnection { get => _sqlConnection; }      
         public List<Query> Queries { get; private set; }
-        public SqlTransaction SqlTransaction { get => _sqlTransaction; }
 
         private void SetConnectionType(string ConnectionStringKey)
         {
@@ -123,7 +122,6 @@ namespace EasyDataMigrator.Modules.Core
         public int ModifyDB(string sql, bool transactionedQuery = true) // Modify data operations, by default we DO require transaction since we are modifying data on de DB and something could go wrong
         {
             SqlCommand command;
-            SqlDataAdapter adapter = new();
             int CommandTimeout;
 
             if (transactionedQuery && _sqlTransaction != null)
@@ -147,9 +145,8 @@ namespace EasyDataMigrator.Modules.Core
 
 
             command.CommandTimeout = CommandTimeout;
-            adapter.UpdateCommand = command;           
 
-            return adapter.UpdateCommand.ExecuteNonQuery();
+            return command.ExecuteNonQuery();
         }
 
         /// <summary>
@@ -193,13 +190,23 @@ namespace EasyDataMigrator.Modules.Core
         ///  Function to Commit transactions in the DB.
         /// </summary>
         /// <param name="transName"></param>
-        public void CommitTransaction() => _sqlTransaction.Commit();
+        public void CommitTransaction()
+        {
+            _sqlTransaction.Commit();
+            _sqlTransaction = null; // We void the object as we finished the transaction and next command will have to create a new one.
+        }
 
         /// <summary>
         ///  Function to Rollback a transaction in the DB.
         /// </summary>
         /// <param name="transName"></param>
-        public void RollBackTransaction(string transName = "DefaultTransaction") => _sqlTransaction.Rollback(transName);
+        public void RollBackTransaction(string transName = "DefaultTransaction")
+        {
+            if (_sqlTransaction.IsolationLevel == IsolationLevel.ReadUncommitted)
+                _sqlTransaction.Rollback(transName);
+
+            _sqlTransaction = null; // We void the object as we finished the transaction and next command will have to create a new one.
+        }
 
         /// <summary>
         /// Function that will use SqlBulkCopy that will copy data from a DataTable to the DB. 

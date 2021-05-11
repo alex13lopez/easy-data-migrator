@@ -11,7 +11,7 @@ using System.IO;
 namespace EasyDataMigrator
 {
     class EasyDataMigrator
-    {   
+    {
         /// <summary>
         /// Option class that defines all the available arguments that can be passed to the app
         /// </summary>
@@ -21,19 +21,25 @@ namespace EasyDataMigrator
             public string Migrate { get; set; }
 
             [Option('A', "automap", HelpText = "Just AutoMap and save mapping.", SetName = "mapping")]
-            public string AutoMap { get; set; }          
+            public string AutoMap { get; set; }
 
             [Option('a', "automigrate", HelpText = "AutoMap and start migration with generated map", SetName = "create_migration")]
             public bool AutoMigrate { get; set; }
 
             [Option('s', "savemap", HelpText = "If AutoMigrate succeeds, this map will be saved for later use.", SetName = "create_migration", Default = null)]
-            public string SaveMap { get; set;  }
+            public string SaveMap { get; set; }
 
             [Option('f', "fullpath", HelpText = "Indicates if the path provided for -s|--savemap is a full path or just the name of the map that it will load from the MapsLocation setting in App.config.", Default = false)]
             public bool FullPath { get; set; }
 
             [Option('l', "listmaps", HelpText = "Gets a lists of TableMaps in default MapsLocation setting in App.config.")]
             public bool ListMaps { get; set; }
+
+            [Option('c', "configfile", HelpText = "Specifies which config file to be used.", Default = "App.config")]
+            public string ConfigFile { get; set; }
+
+            [Option('p', "pause", HelpText = "Pause after program execution.")]
+            public bool PauseAfterExecution { get; set; }
         }
 
         static void Main(string[] args)
@@ -41,6 +47,7 @@ namespace EasyDataMigrator
             Logger logger = new();
             Commander commander = new(logger);
             ParserResult<Options> options = Parser.Default.ParseArguments<Options>(args);
+            bool pauseAfterExecution = false;
 
             if (args.Length <= 0)
             {
@@ -52,6 +59,9 @@ namespace EasyDataMigrator
             {
                 options.WithParsed<Options>(o =>
                 {
+                    if (!string.IsNullOrWhiteSpace(o.ConfigFile))
+                        LoadConfig(o.ConfigFile);
+
                     if (o.AutoMigrate)
                         AutoMigrate(logger, commander, o.SaveMap, o.FullPath);
                
@@ -63,18 +73,34 @@ namespace EasyDataMigrator
 
                     if (o.ListMaps)
                         ListMaps();
+
+                    if (o.PauseAfterExecution)
+                        pauseAfterExecution = true;
                 });
             }
             catch (ArgumentNullException ex)
             {
                 logger.PrintNLog(ex.Message, Logger.LogType.CRITICAL);
                 Console.Write(HelpText.AutoBuild(options, null, null));
-#if DEBUG
-                Console.ReadKey();
-#endif
             }
 
-             
+            if (pauseAfterExecution)
+            {
+                Console.Write("Press any key to continue...");
+                Console.ReadKey();
+            }
+        }
+
+        /// <summary>
+        /// Function that loads the configuration file for this execution, be it the default config file or user-specified
+        /// </summary>
+        /// <param name="configFile"></param>
+        private static void LoadConfig(string configFile)
+        {
+            ExeConfigurationFileMap map = new() { ExeConfigFilename = configFile };
+            Configuration config = ConfigurationManager.OpenMappedExeConfiguration(map, ConfigurationUserLevel.None);
+
+            
         }
 
         /// <summary>
@@ -133,9 +159,17 @@ namespace EasyDataMigrator
                 return;
             }
 
-            // We save the map if user wants us to do so
-            if (save)
-                commander.Mapper.SaveMaps(SaveToMap, fullPath);
+            try
+            {
+                // We save the map if user wants us to do so
+                if (save)
+                    commander.Mapper.SaveMaps(SaveToMap, fullPath);
+            }
+            catch (ArgumentOutOfRangeException ex)
+            {
+                logger.PrintNLog($"Unable to save to file '{SaveToMap}'. See details below: {Environment.NewLine}" + ex.Message, Logger.LogType.ERROR);
+            }
+            
         }
 
         /// <summary>
@@ -208,7 +242,7 @@ namespace EasyDataMigrator
             catch (MigrationException ex) when (ex.SeverityLevel == MigrationException.ExceptionSeverityLevel.CRITICAL)
             {
                 logger.PrintNLog(ex.Message, Logger.LogType.CRITICAL);
-                logger.PrintNLog("Migration process ended with errors.");
+                logger.PrintNLog("Migration process ended with errors.", Logger.LogType.CRITICAL);
 
                 if (commander.OrigConnection.SqlConnection.State == System.Data.ConnectionState.Open)
                     commander.OrigConnection.Close();
@@ -218,19 +252,19 @@ namespace EasyDataMigrator
 
                 return; // A critical exception is fatal so the program cannot continue
             }
-            catch (Exception ex)
-            {
-                logger.PrintNLog(ex.Message, Logger.LogType.CRITICAL);
-                logger.PrintNLog("Migration process ended with errors.");
+            //catch (Exception ex)
+            //{
+            //    logger.PrintNLog(ex.Message, Logger.LogType.CRITICAL);
+            //    logger.PrintNLog("Migration process ended with errors.", Logger.LogType.CRITICAL);
 
-                if (commander.OrigConnection.SqlConnection.State == System.Data.ConnectionState.Open)
-                    commander.OrigConnection.Close();
+            //    if (commander.OrigConnection.SqlConnection.State == System.Data.ConnectionState.Open)
+            //        commander.OrigConnection.Close();
 
-                if (commander.DestConnection.SqlConnection.State == System.Data.ConnectionState.Open)
-                    commander.DestConnection.Close();
+            //    if (commander.DestConnection.SqlConnection.State == System.Data.ConnectionState.Open)
+            //        commander.DestConnection.Close();
 
-                return; // An uncaught exception is an unknown severity kind of exception so we are uncertain if we can continue with the execution or not
-            }
+            //    return; // An uncaught exception is an unknown severity kind of exception so we are uncertain if we can continue with the execution or not
+            //}
         }
     }
 }

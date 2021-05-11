@@ -138,7 +138,12 @@ namespace EasyDataMigrator.Modules
         /// <param name="queries"></param>
         private void PerformQueries(DbConnector connection, List<Query> queries)
         {
-            connection.Open();
+            ConnectionState previousState = ConnectionState.Closed;
+
+            if (connection.SqlConnection.State != ConnectionState.Open)
+                connection.Open();
+            else
+                previousState = ConnectionState.Open;
 
             // We order by ExecutionOrder to avoid needed variables beeing empty
             queries = (from q in queries
@@ -192,7 +197,12 @@ namespace EasyDataMigrator.Modules
                         if (connection.SqlConnection.State != ConnectionState.Open)
                             connection.Open();
 
-                        affectedRows = connection.ModifyDB(opQuery.Sql);
+                        affectedRows = connection.ModifyDB(opQuery.Sql, true);
+
+                        if (affectedRows > 0)
+                            connection.CommitTransaction();
+                        else
+                            connection.RollBackTransaction();
 
                         logger.PrintNLog($"User-defined execute query: {opQuery.OriginalID} has affected {affectedRows} rows", Logger.LogType.INFO, "querylog");
                     }
@@ -238,7 +248,8 @@ namespace EasyDataMigrator.Modules
                 }
             }
 
-            connection.Close();
+            if (previousState != ConnectionState.Open)
+                connection.Close();
         }
 
         /// <summary>
@@ -375,8 +386,7 @@ namespace EasyDataMigrator.Modules
                     tableMap.UseBulkCopy = true;
 
                     // Secondly we rollback the changes
-                    if (destConnection.SqlTransaction.IsolationLevel == IsolationLevel.Serializable)
-                        destConnection.RollBackTransaction();
+                    destConnection.RollBackTransaction();
 
                     // Lastly we inform of what happened
                     logger.PrintNLog($"Migration {tableMap.MapId} exceeded timeout so changing to Bulk Mode. You should consider adding {tableMap.FromTable} to 'UseBulkCopyTables' list.", Logger.LogType.WARNING);
@@ -451,7 +461,7 @@ namespace EasyDataMigrator.Modules
                             }
                             catch (MigrationException ex) when (ex.SeverityLevel == MigrationException.ExceptionSeverityLevel.ERROR)
                             {
-                                logger.PrintNLog($"Failed migration {failedMig.MapId} still could not be migrated. Waiting {busyTablesWaitTime}s before next retry!", Logger.LogType.ERROR);
+                                logger.PrintNLog($"Failed migration {failedMig.MapId} still could not be migrated. Waiting {busyTablesWaitTime.TotalSeconds}s before next retry!", Logger.LogType.ERROR);
                                 Thread.Sleep(busyTablesWaitTime);
 
                                 retryCount++;
