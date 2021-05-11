@@ -1,16 +1,15 @@
-﻿using System;
-using System.Configuration;
+﻿using System.Configuration;
 
 namespace EasyDataMigrator.Modules.Configuration
 {
     /// <summary>
     /// Custom ConfigurationSection for Variables
     /// </summary>
-    public class CustomVariablesConfig : ConfigurationSection
+    public class CustomVariablesSection : ConfigurationSection
     {
-        public static CustomVariablesConfig GetConfig()
+        public static CustomVariablesSection GetConfig()
         {
-            return (CustomVariablesConfig)ConfigurationManager.GetSection("CustomVariables") ?? new CustomVariablesConfig();
+            return (CustomVariablesSection)ConfigurationManager.GetSection("CustomVariables") ?? new CustomVariablesSection();
         }
 
         [ConfigurationProperty("Variables")]

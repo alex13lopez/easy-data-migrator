@@ -1,5 +1,4 @@
-﻿using System;
-using System.Configuration;
+﻿using System.Configuration;
 
 namespace EasyDataMigrator.Modules.Configuration
 {
@@ -188,7 +187,9 @@ namespace EasyDataMigrator.Modules.Configuration
         {
             _executionOrder = -1;
             _executionContext = QueryExecutionContext.Null;
-            _type = QueryType.Null;           
-        }
+            _type = QueryType.Null;
+            _connection = QueryConnection.Null;
+            _storeIn = null;
     }
+}
 }

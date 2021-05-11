@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Configuration;
 using EasyDataMigrator.Modules.Core;
 using EasyDataMigrator.Modules.Configuration;
 using System.Collections.Generic;
@@ -12,17 +11,18 @@ namespace EasyDataMigrator.Modules
 {
     class Commander
     {
-        private readonly Mapper mapper;
-        private readonly Variables userVariables;
-        private readonly Variables systemVariables;
-        private readonly DbConnector origConnection;
-        private readonly DbConnector destConnection;
+        private Mapper mapper;
+        private Variables userVariables;
+        private Variables systemVariables;
+        private DbConnector origConnection;
+        private DbConnector destConnection;
         private readonly Logger logger;
-        private readonly string OriginPattern;
-        private readonly string DestinationPattern;
-        private readonly bool excludePatternFromMatch;
+        private string OriginPattern;
+        private string DestinationPattern;
+        private bool excludePatternFromMatch;
         private decimal precisionThreshold;
-        private readonly bool UseControlMech;
+        private bool UseControlMech;
+        private bool alreadyLoaded;
 
         public Mapper Mapper { get => mapper; }
         public DbConnector OrigConnection { get => origConnection; }
@@ -33,18 +33,30 @@ namespace EasyDataMigrator.Modules
         /// </summary>
         /// <param name="_logger">We pass an object of type logger so we can print messages to console and write important messages to logs.</param>
         public Commander(Logger _logger)
-        {
-            mapper = new();
-            userVariables = CustomVariablesConfig.GetConfig().Variables;
-            systemVariables = new();
-            origConnection = new("OriginConnection");
-            destConnection = new("DestinationConnection");
-            OriginPattern = ConfigurationManager.AppSettings["SearchOriginPattern"];
-            DestinationPattern = ConfigurationManager.AppSettings["SearchDestPattern"];
-            excludePatternFromMatch = ConfigurationManager.AppSettings["excludePatternFromMatch"] == "True";
-            UseControlMech = ConfigurationManager.AppSettings["UseTableControlMechanism"] == "True";
+        {            
             logger = _logger;
-            InitSystemVariables();
+        }
+
+        /// <summary>
+        /// Function to load all the config that is needed for migration.
+        /// Moved here instead from the constructor so we can LoadConf after the conf is loaded in the static class EasyDataMigratorConfig
+        /// </summary>
+        internal void LoadConf()
+        {
+            if (!alreadyLoaded)
+            {
+                mapper = new();
+                systemVariables = new();
+                InitSystemVariables();
+                userVariables = EasyDataMigratorConfig.CustomVariablesSection.Variables;
+                origConnection = new("OriginConnection");
+                destConnection = new("DestinationConnection");
+                OriginPattern = EasyDataMigratorConfig.AppSettings.Settings["SearchOriginPattern"].Value;
+                DestinationPattern = EasyDataMigratorConfig.AppSettings.Settings["SearchDestPattern"].Value;
+                excludePatternFromMatch = EasyDataMigratorConfig.AppSettings.Settings["excludePatternFromMatch"].Value == "True";
+                UseControlMech = EasyDataMigratorConfig.AppSettings.Settings["UseTableControlMechanism"].Value == "True";
+                alreadyLoaded = true;
+            }
         }
 
         /// <summary>
@@ -77,8 +89,8 @@ namespace EasyDataMigrator.Modules
             origConnection.Close();
             destConnection.Close();
 
-            if (!string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["MapPrecisionThreshold"]))
-                precisionThreshold = Convert.ToDecimal(ConfigurationManager.AppSettings["MapPrecisionThreshold"]);
+            if (!string.IsNullOrWhiteSpace(EasyDataMigratorConfig.AppSettings.Settings["MapPrecisionThreshold"].Value))
+                precisionThreshold = Convert.ToDecimal(EasyDataMigratorConfig.AppSettings.Settings["MapPrecisionThreshold"].Value);
             else
                 precisionThreshold = 50; // By default, we want at least to be 50% succesful
 
@@ -138,7 +150,12 @@ namespace EasyDataMigrator.Modules
         /// <param name="queries"></param>
         private void PerformQueries(DbConnector connection, List<Query> queries)
         {
-            connection.Open();
+            ConnectionState previousState = ConnectionState.Closed;
+
+            if (connection.SqlConnection.State != ConnectionState.Open)
+                connection.Open();
+            else
+                previousState = ConnectionState.Open;
 
             // We order by ExecutionOrder to avoid needed variables beeing empty
             queries = (from q in queries
@@ -154,11 +171,11 @@ namespace EasyDataMigrator.Modules
                 if (userVariables != null || systemVariables != null)
                     ParametrizeQuery(opQuery, userVariables, systemVariables);
 
+                        Variable userVar = null, sysVar = null;
                 try
                 {
                     if (!string.IsNullOrWhiteSpace(opQuery.StoreIn) && opQuery.Type == Query.QueryType.Read)
                     {
-                        Variable userVar = null, sysVar = null;
 
                         if (userVariables != null)
                         {
@@ -192,7 +209,12 @@ namespace EasyDataMigrator.Modules
                         if (connection.SqlConnection.State != ConnectionState.Open)
                             connection.Open();
 
-                        affectedRows = connection.ModifyDB(opQuery.Sql);
+                        affectedRows = connection.ModifyDB(opQuery.Sql, true);
+
+                        if (affectedRows > 0)
+                            connection.CommitTransaction();
+                        else
+                            connection.RollBackTransaction();
 
                         logger.PrintNLog($"User-defined execute query: {opQuery.OriginalID} has affected {affectedRows} rows", Logger.LogType.INFO, "querylog");
                     }
@@ -215,7 +237,16 @@ namespace EasyDataMigrator.Modules
                 catch (FormatException ex)
                 {
                     connection.Close();
-                    throw new MigrationException(ex.Message, MigrationException.ExceptionSeverityLevel.CRITICAL, ex);
+                    string errMessage = null;
+
+                    if (sysVar != null)
+                        errMessage = $"Input string was not in a correct format. Cannot convert '{sysVar.Value}' to '{sysVar.Type.Name}'. This value is for SystemVariable: '{sysVar.Name}' and is obtained from CustomQuery: '{opQuery.OriginalID}'";
+                    else if (userVar != null)
+                        errMessage = $"Input string was not in a correct format. Cannot convert '{userVar.Value}' to '{userVar.Type.Name}'. This value is for CustomVariable: '{userVar.Name}' and is obtained from CustomQuery: '{opQuery.OriginalID}'";
+                    else
+                        errMessage = ex.Message;
+
+                    throw new MigrationException(errMessage, MigrationException.ExceptionSeverityLevel.CRITICAL, ex);
                 }
                 catch (OverflowException ex)
                 {
@@ -229,7 +260,8 @@ namespace EasyDataMigrator.Modules
                 }
             }
 
-            connection.Close();
+            if (previousState != ConnectionState.Open)
+                connection.Close();
         }
 
         /// <summary>
@@ -327,10 +359,10 @@ namespace EasyDataMigrator.Modules
                     ExecuteQueries(Query.QueryType.Read, Query.QueryExecutionContext.AfterTableMigration);
                     ExecuteQueries(Query.QueryType.Execute, Query.QueryExecutionContext.AfterTableMigration);
                 }
-
-                if (failedMigrations.Count > 0)
-                    RetryFailedMigrations(failedMigrations);
             }
+
+            if (failedMigrations.Count > 0)
+                RetryFailedMigrations(failedMigrations);
 
             destConnection.Close();
         }
@@ -413,8 +445,8 @@ namespace EasyDataMigrator.Modules
         /// <param name="failedMigrations"></param>
         private void RetryFailedMigrations(List<TableMap> failedMigrations)
         {
-            int maxRetries = Convert.ToInt32(ConfigurationManager.AppSettings["FailedMigrationsRetries"]);
-            TimeSpan busyTablesWaitTime = new(0, 0, Convert.ToInt32(ConfigurationManager.AppSettings["WaitTimeBusyTables"]));
+            int maxRetries = Convert.ToInt32(EasyDataMigratorConfig.AppSettings.Settings["FailedMigrationsRetries"].Value);
+            TimeSpan busyTablesWaitTime = new(0, 0, Convert.ToInt32(EasyDataMigratorConfig.AppSettings.Settings["WaitTimeBusyTables"].Value));
 
             foreach (TableMap failedMig in failedMigrations)
             {
@@ -441,7 +473,7 @@ namespace EasyDataMigrator.Modules
                             }
                             catch (MigrationException ex) when (ex.SeverityLevel == MigrationException.ExceptionSeverityLevel.ERROR)
                             {
-                                logger.PrintNLog($"Failed migration {failedMig.MapId} still could not be migrated. Waiting {busyTablesWaitTime}s before next retry!", Logger.LogType.ERROR);
+                                logger.PrintNLog($"Failed migration {failedMig.MapId} still could not be migrated. Waiting {busyTablesWaitTime.TotalSeconds}s before next retry!", Logger.LogType.ERROR);
                                 Thread.Sleep(busyTablesWaitTime);
 
                                 retryCount++;

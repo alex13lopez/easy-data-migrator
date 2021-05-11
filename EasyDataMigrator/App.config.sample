@@ -18,12 +18,13 @@
     <add key="excludePatternFromMatch" value="True"/>
     <add key="GetTablesQuery" value="select t.Name as TableName,c.Name as ColumnName from sys.objects t inner join sys.all_columns c on t.object_id = c.object_id where t.type in ('U','V')"/>
     <add key ="UseBulkCopyTables" value=""/>
-    <add key="RetryFailedMigrations" value="5"/>
+    <add key="FailedMigrationsRetries" value="5"/>
     <add key="WaitTimeBusyTables" value="60"/>
     <add key="MaxQueryTimeout" value="60"/>
     <add key="MaxBulkModeTimeout" value="300"/>
     <add key="MapPrecisionThreshold" value="50"/>
     <add key="UseTableControlMechanism" value="True"/>
+    <add key="MapsLocation" value=".\Maps\"/>
   </appSettings>
 
   <CustomVariables>

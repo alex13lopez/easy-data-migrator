@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Configuration;
 using System.IO;
+using EasyDataMigrator.Modules.Configuration;
 
 namespace EasyDataMigrator.Modules.Core
 {
@@ -29,7 +29,7 @@ namespace EasyDataMigrator.Modules.Core
 
         public void Log(string logMessage, LogType logType = LogType.INFO, string format = "_yyyyMMdd-hh.mm.ss.fff", string formatLines = "hh:mm:ss", string prefixName = "log")
         {
-            string fileName = ConfigurationManager.AppSettings["LogPath"] + prefixName + _dateNow.ToString(format) + ".txt";
+            string fileName = EasyDataMigratorConfig.AppSettings.Settings["LogPath"].Value + prefixName + _dateNow.ToString(format) + ".txt";
 
             try
             {
@@ -37,7 +37,7 @@ namespace EasyDataMigrator.Modules.Core
             }
             catch (DirectoryNotFoundException)
             {
-                Directory.CreateDirectory(ConfigurationManager.AppSettings["LogPath"]);
+                Directory.CreateDirectory(EasyDataMigratorConfig.AppSettings.Settings["LogPath"].Value);
                 Log(logMessage);
             }
 
@@ -56,10 +56,10 @@ namespace EasyDataMigrator.Modules.Core
                     Console.ForegroundColor = !AlternateColors ? ConsoleColor.Yellow : ConsoleColor.DarkYellow;
                     break;
                 case LogType.ERROR:
-                    Console.ForegroundColor = !AlternateColors ? ConsoleColor.Red : ConsoleColor.Magenta;
+                    Console.ForegroundColor = !AlternateColors ? ConsoleColor.DarkRed : ConsoleColor.DarkMagenta;
                     break;
                 case LogType.CRITICAL:
-                    Console.ForegroundColor = !AlternateColors ? ConsoleColor.DarkRed : ConsoleColor.DarkMagenta;
+                    Console.ForegroundColor = ConsoleColor.Red; // A critical is a fatal error so it must be very flashing, that's why its always pure red.
                     break;
                 default:
                     break;
