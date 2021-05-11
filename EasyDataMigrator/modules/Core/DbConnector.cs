@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
 using EasyDataMigrator.Modules.Configuration;
@@ -38,7 +37,7 @@ namespace EasyDataMigrator.Modules.Core
 
         public DbConnector(string ConnectionStringKey) // Conexión a BD SQL Server
         {
-            string connectionString = ConfigurationManager.ConnectionStrings[ConnectionStringKey].ConnectionString;
+            string connectionString = EasyDataMigratorConfig.ConnectionStrings.ConnectionStrings[ConnectionStringKey].ConnectionString;
             _sqlConnection = new SqlConnection(connectionString);
             ServerName = _sqlConnection.DataSource;
             DataBaseName = _sqlConnection.Database;            
@@ -70,7 +69,7 @@ namespace EasyDataMigrator.Modules.Core
                 command = new SqlCommand(sql, _sqlConnection);
             }
 
-            command.CommandTimeout = Convert.ToInt32(ConfigurationManager.AppSettings["MaxBulkModeTimeout"]); // Same max time as bulk mode, has no sense having less time than the max time the app is gonna wait
+            command.CommandTimeout = Convert.ToInt32(EasyDataMigratorConfig.AppSettings.Settings["MaxBulkModeTimeout"].Value); // Same max time as bulk mode, has no sense having less time than the max time the app is gonna wait
 
             return command.ExecuteReader();
         }
@@ -138,10 +137,10 @@ namespace EasyDataMigrator.Modules.Core
                 command = new SqlCommand(sql, _sqlConnection);
             }
 
-            if (string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["MaxQueryTimeout"]))
+            if (string.IsNullOrWhiteSpace(EasyDataMigratorConfig.AppSettings.Settings["MaxQueryTimeout"].Value))
                 CommandTimeout = 60; // By default we asign 3 minutes of timeout if no value specified
             else
-                CommandTimeout = Convert.ToInt32(ConfigurationManager.AppSettings["MaxQueryTimeout"]);
+                CommandTimeout = Convert.ToInt32(EasyDataMigratorConfig.AppSettings.Settings["MaxQueryTimeout"].Value);
 
 
             command.CommandTimeout = CommandTimeout;
@@ -219,10 +218,10 @@ namespace EasyDataMigrator.Modules.Core
             using SqlBulkCopy bulkCopy = new(_sqlConnection, SqlBulkCopyOptions.KeepNulls, _sqlTransaction);
             int CommandTimeout;
 
-            if (string.IsNullOrWhiteSpace(ConfigurationManager.AppSettings["MaxBulkModeTimeout"]))
+            if (string.IsNullOrWhiteSpace(EasyDataMigratorConfig.AppSettings.Settings["MaxBulkModeTimeout"].Value))
                 CommandTimeout = 300; // By default we asign 5 minutes of timeout if no value specified
             else
-                CommandTimeout = Convert.ToInt32(ConfigurationManager.AppSettings["MaxBulkModeTimeout"]);
+                CommandTimeout = Convert.ToInt32(EasyDataMigratorConfig.AppSettings.Settings["MaxBulkModeTimeout"].Value);
 
 
             bulkCopy.DestinationTableName = tableMap.DestinationDataBase + ".dbo." + tableMap.ToTableName;
@@ -245,8 +244,8 @@ namespace EasyDataMigrator.Modules.Core
         /// </summary>
         private void LoadQueries()
         {
-            Queries = new List<Query>();            
-            Queries queries = CustomQueriesConfig.GetConfig().Queries;
+            Queries = new List<Query>();
+            Queries queries = EasyDataMigratorConfig.CustomQueriesSection.Queries;
 
             foreach (Query query in queries)
             {

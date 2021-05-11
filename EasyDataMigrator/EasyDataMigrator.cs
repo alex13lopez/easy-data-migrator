@@ -5,7 +5,6 @@ using EasyDataMigrator.Modules.Core;
 using EasyDataMigrator.Modules.Configuration;
 using CommandLine;
 using CommandLine.Text;
-using System.Collections.Generic;
 using System.IO;
 
 namespace EasyDataMigrator
@@ -35,7 +34,7 @@ namespace EasyDataMigrator
             [Option('l', "listmaps", HelpText = "Gets a lists of TableMaps in default MapsLocation setting in App.config.")]
             public bool ListMaps { get; set; }
 
-            [Option('c', "configfile", HelpText = "Specifies which config file to be used.", Default = "App.config")]
+            [Option('c', "configfile", HelpText = "Specifies which config file to be used. If none specified, default App.config will be used.")]
             public string ConfigFile { get; set; }
 
             [Option('p', "pause", HelpText = "Pause after program execution.")]
@@ -43,7 +42,7 @@ namespace EasyDataMigrator
         }
 
         static void Main(string[] args)
-        {            
+        {
             Logger logger = new();
             Commander commander = new(logger);
             ParserResult<Options> options = Parser.Default.ParseArguments<Options>(args);
@@ -60,7 +59,9 @@ namespace EasyDataMigrator
                 options.WithParsed<Options>(o =>
                 {
                     if (!string.IsNullOrWhiteSpace(o.ConfigFile))
-                        LoadConfig(o.ConfigFile);
+                        LoadConfig(o.ConfigFile, commander);
+                    else
+                        LoadConfig(EasyDataMigratorConfig.DefaultConfigFilePath, commander);
 
                     if (o.AutoMigrate)
                         AutoMigrate(logger, commander, o.SaveMap, o.FullPath);
@@ -83,24 +84,33 @@ namespace EasyDataMigrator
                 logger.PrintNLog(ex.Message, Logger.LogType.CRITICAL);
                 Console.Write(HelpText.AutoBuild(options, null, null));
             }
-
+            
             if (pauseAfterExecution)
             {
                 Console.Write("Press any key to continue...");
                 Console.ReadKey();
             }
+
         }
 
         /// <summary>
         /// Function that loads the configuration file for this execution, be it the default config file or user-specified
         /// </summary>
         /// <param name="configFile"></param>
-        private static void LoadConfig(string configFile)
+        private static void LoadConfig(string configFile, Commander commander)
         {
+            // We open the config file
             ExeConfigurationFileMap map = new() { ExeConfigFilename = configFile };
             Configuration config = ConfigurationManager.OpenMappedExeConfiguration(map, ConfigurationUserLevel.None);
 
-            
+            // We load the config to each "Configuration Section"
+            EasyDataMigratorConfig.AppSettings = config.AppSettings;
+            EasyDataMigratorConfig.ConnectionStrings = config.ConnectionStrings;
+            EasyDataMigratorConfig.CustomVariablesSection = config.GetSection("CustomVariables") as CustomVariablesSection;
+            EasyDataMigratorConfig.CustomQueriesSection = config.GetSection("CustomQueries") as CustomQueriesSection;
+
+            // After loading the configuration succesfully above, we proceed to load the configuration of commander
+            commander.LoadConf();
         }
 
         /// <summary>

@@ -1,16 +1,15 @@
-﻿using System;
-using System.Configuration;
+﻿using System.Configuration;
 
 namespace EasyDataMigrator.Modules.Configuration
 {
     /// <summary>
     /// Custom configuration section class for Queries.
     /// </summary>
-    public class CustomQueriesConfig : ConfigurationSection
+    public class CustomQueriesSection : ConfigurationSection
     {
-        public static CustomQueriesConfig GetConfig()
+        public static CustomQueriesSection GetConfig()
         {
-            return (CustomQueriesConfig)ConfigurationManager.GetSection("CustomQueries") ?? new CustomQueriesConfig();
+            return (CustomQueriesSection)ConfigurationManager.GetSection("CustomQueries") ?? new CustomQueriesSection();
         }
 
         [ConfigurationProperty("Queries")]

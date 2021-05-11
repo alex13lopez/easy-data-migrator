@@ -3,11 +3,10 @@ using System.Data;
 using System.Linq;
 using System.Data.SqlClient;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.IO;
 using System.Text.RegularExpressions;
+using EasyDataMigrator.Modules.Configuration;
 
 namespace EasyDataMigrator.Modules.Core
 {
@@ -23,7 +22,7 @@ namespace EasyDataMigrator.Modules.Core
 
         public void AutoMap(DbConnector originConnection, DbConnector destinationConnection, string originPatterMatching = null, string destinationPatternMatching = null, bool excludePatternsFromMatch = true)
         {
-            string query = ConfigurationManager.AppSettings["GetTablesQuery"];
+            string query = EasyDataMigratorConfig.AppSettings.Settings["GetTablesQuery"].Value;
             SqlDataReader originReader;
             SqlDataReader destinationReader;
             DataTable originTable = new();
@@ -88,7 +87,7 @@ namespace EasyDataMigrator.Modules.Core
                     if (oTableNameF == dTableNameF)
                     {
                         matchedCount++;
-                        bool useBulkCopy = ConfigurationManager.AppSettings["UseBulkCopyTables"].Contains(oTableName);
+                        bool useBulkCopy = EasyDataMigratorConfig.AppSettings.Settings["UseBulkCopyTables"].Value.Contains(oTableName);
 
                         _ = FindOrCreateTableMap(new TableMap(originServer, destinationServer, originDB, destinationDB, oTableName, dTableName, useBulkCopy));
                     }
@@ -148,7 +147,7 @@ namespace EasyDataMigrator.Modules.Core
 
             if (!fullPath)
             {
-                filePath = ConfigurationManager.AppSettings["MapsLocation"];
+                filePath = EasyDataMigratorConfig.AppSettings.Settings["MapsLocation"].Value;
             
                 if (string.IsNullOrWhiteSpace(filePath))
                     filePath = @".\Maps\" ;
