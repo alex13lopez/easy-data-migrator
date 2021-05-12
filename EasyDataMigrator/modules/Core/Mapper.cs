@@ -5,8 +5,8 @@ using System.Data.SqlClient;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.IO;
-using System.Text.RegularExpressions;
 using EasyDataMigrator.Modules.Configuration;
+using EasyDataMigrator.Modules;
 
 namespace EasyDataMigrator.Modules.Core
 {
@@ -157,7 +157,7 @@ namespace EasyDataMigrator.Modules.Core
                 filePath = Path.GetDirectoryName(fileName);
             }
 
-            bool filenameIsValidated = ValidateFileName(fileName);
+            bool filenameIsValidated = Utilities.ValidateFileName(fileName);
 
             if (filenameIsValidated)
             {
@@ -166,7 +166,7 @@ namespace EasyDataMigrator.Modules.Core
 
             if (!fullPath && !filenameIsValidated)
                 throw new ArgumentOutOfRangeException(nameof(fileName), $"The file name specified is not valid. It can only contain numbers, letters, dashes, underscores and have a maximum length of 200 characters (Extension will be added automatically).{Environment.NewLine}Please if it is a path use -f|--fullpath.");
-            else if (fullPath && !ValidateFullPath(fileName))
+            else if (fullPath && !Utilities.ValidateFullPath(fileName))
                 throw new ArgumentOutOfRangeException(nameof(fileName), $"The file path specified is not valid. It can only contain numbers, letters, dots, dashes and underscores, colons, slashes, backslashes and have a maximum length of 255 characters (You may or may not use extension for your files).{Environment.NewLine}");            
 
             byte[] dataBytes;
@@ -182,27 +182,11 @@ namespace EasyDataMigrator.Modules.Core
                 Directory.CreateDirectory(filePath);
                 SaveMaps(fileName, true); // Here we pass true to fullPath because even though the user provided only a fileName, we converted it to fullpath by adding the default path ".\Maps"
             }
-        }
-
-        public static bool ValidateFileName(string fileName)
-        {
-            // File names can only contain numbers, letters, dashes, underscore and have a maximum length of 200 characters.
-            string pattern = @"^([a-zA-Z0-9\-_]){1,200}$";
-            return stringIsValid(fileName, pattern); 
-        }
-
-        public static bool ValidateFullPath(string fullPath) 
-        {
-            // File paths can only contain numbers, letters, dashes, underscores, slashes, backslashes, colons and have a maximum length of 255 characters.
-            string pattern = @"^([a-zA-Z0-9\-_.:\\/ ]){1,255}$";
-            return stringIsValid(fullPath, pattern);
-        } 
-
-        public static bool stringIsValid(string toValidate, string validationPattern) => new Regex(validationPattern).IsMatch(toValidate);
+        }        
 
         public void LoadMaps(string fileName, bool fullPath = false)
         {
-            bool filenameIsValidated = ValidateFileName(fileName);
+            bool filenameIsValidated = Utilities.ValidateFileName(fileName);
 
             if (filenameIsValidated)
             {
@@ -211,9 +195,10 @@ namespace EasyDataMigrator.Modules.Core
 
             if (!fullPath && !filenameIsValidated)
                 throw new ArgumentOutOfRangeException(nameof(fileName), $"The file name specified is not valid. It can only contain numbers, letters, dashes, underscores and have a maximum length of 200 characters (Extension will be added automatically).{Environment.NewLine}Please if it is a path use -f|--fullpath.");
-            else if (fullPath && !ValidateFullPath(fileName))
+            else if (fullPath && !Utilities.ValidateFullPath(fileName))
                 throw new ArgumentOutOfRangeException(nameof(fileName), $"The file path specified is not valid. It can only contain numbers, letters, dots, dashes and underscores, colons, slashes, backslashes and have a maximum length of 255 characters (You may or may not use extension for your files).{Environment.NewLine}");
-
+            else if (!File.Exists(fileName))
+                throw new FileNotFoundException("The file especified does not exist", fileName);
 
             string jsonString = File.ReadAllText(fileName);
             JsonSerializerOptions options = new() { AllowTrailingCommas = true, IncludeFields = true, PropertyNameCaseInsensitive = true };

@@ -27,18 +27,27 @@ namespace EasyDataMigrator.Modules.Core
             AlternateColors = false;
         }
 
-        public void Log(string logMessage, LogType logType = LogType.INFO, string format = "_yyyyMMdd-hh.mm.ss.fff", string formatLines = "hh:mm:ss", string prefixName = "log")
+        public void Log(string logMessage, LogType logType = LogType.INFO, string format = "_yyyyMMdd-hh.mm.ss.fff", string formatLines = "hh:mm:ss", string prefixName = "log", string fileDirectory = null)
         {
-            string fileName = EasyDataMigratorConfig.AppSettings.Settings["LogPath"].Value + prefixName + _dateNow.ToString(format) + ".txt";
+            string fileName;            
 
             try
             {
+                if (!string.IsNullOrWhiteSpace(fileDirectory))
+                    fileName = fileDirectory + prefixName + _dateNow.ToString(format) + ".txt";
+                else
+                    fileName = EasyDataMigratorConfig.AppSettings.Settings["LogPath"].Value + prefixName + _dateNow.ToString(format) + ".txt";
+
                 File.AppendAllText(fileName, "[" + logType.ToString() + "] - [" + System.DateTime.Now.ToString(formatLines) + "] " + logMessage + Environment.NewLine);
             }
             catch (DirectoryNotFoundException)
             {
                 Directory.CreateDirectory(EasyDataMigratorConfig.AppSettings.Settings["LogPath"].Value);
                 Log(logMessage);
+            }
+            catch (NullReferenceException)
+            {
+                Log(logMessage, logType, format, formatLines, prefixName, @".\Logs\"); // We send the default directory
             }
 
         }
