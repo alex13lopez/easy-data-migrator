@@ -24,8 +24,8 @@ of the table and thus wait/retry migration if the table is busy. You can see App
 
 # FUTURE IDEAS
 * As mentioned above, the idea is to support more DataBases such as POSTGRESQL, MariaDB/MySQL, SQLite and Oracle.
-* Combine the power of the AutoMap with the user to create custom maps quickly. (Basically AutoMap and save the map, and enable the user to edit the map to add fields/tables that are not named equally).
-* Allow different configurations to enable the user to migrate several DB.
+* ~~Combine the power of the AutoMap with the user to create custom maps quickly. (Basically AutoMap and save the map, and enable the user to edit the map to add fields/tables that are not named equally).~~ - DONE!
+* ~~Allow different configurations to enable the user to migrate several DB.~~ DONE!
 * Use hyperthreading to migrate simultaneously several tables or even several configurations.
 
 # APP.CONFIG SETTINGS

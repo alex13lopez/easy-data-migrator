@@ -28,11 +28,14 @@ namespace EasyDataMigrator
             [Option('s', "savemap", HelpText = "If AutoMigrate succeeds, this map will be saved for later use.", SetName = "create_migration", Default = null)]
             public string SaveMap { get; set; }
 
-            [Option('f', "fullpath", HelpText = "Indicates if the path provided for -s|--savemap is a full path or just the name of the map that it will load from the MapsLocation setting in App.config.", Default = false)]
+            [Option('f', "fullpath", HelpText = "Indicates if the path provided for -s|--savemap or for -c|configfile is a full path or not. If you use this option and are using both options (-s, -c) both paths must be supplied as a full path.", Default = false)]
             public bool FullPath { get; set; }
 
-            [Option('l', "listmaps", HelpText = "Gets a lists of TableMaps in default MapsLocation setting in App.config.")]
+            [Option('l', "listmaps", HelpText = "Gets a lists of available TableMaps in default MapsLocation setting in default location.")]
             public bool ListMaps { get; set; }
+
+            [Option('L', "listconfigs", HelpText = "Gets a list of available Configs in default ConfigsLocation setting in default location.")]
+            public bool ListConfs { get; set; }
 
             [Option('c', "configfile", HelpText = "Specifies which config file to be used. If none specified, default App.config will be used.")]
             public string ConfigFile { get; set; }
@@ -59,9 +62,9 @@ namespace EasyDataMigrator
                 options.WithParsed<Options>(o =>
                 {
                     if (!string.IsNullOrWhiteSpace(o.ConfigFile))
-                        LoadConfig(o.ConfigFile, commander);
+                        LoadConfig(o.ConfigFile, commander, o.FullPath);
                     else
-                        LoadConfig(EasyDataMigratorConfig.DefaultConfigFilePath, commander);
+                        LoadConfig(EasyDataMigratorConfig.DefaultConfigFilePath, commander, true);
 
                     if (o.AutoMigrate)
                         AutoMigrate(logger, commander, o.SaveMap, o.FullPath);
@@ -73,7 +76,10 @@ namespace EasyDataMigrator
                         Map(logger, commander, true, o.AutoMap, o.FullPath);
 
                     if (o.ListMaps)
-                        ListMaps();
+                        ListAppFiles("TableMaps", @".\Maps\", ".tablemaps");
+
+                    if (o.ListConfs)
+                        ListAppFiles("Configs", @".\Configs\", ".config");
 
                     if (o.PauseAfterExecution)
                         pauseAfterExecution = true;
@@ -84,7 +90,11 @@ namespace EasyDataMigrator
                 logger.PrintNLog(ex.Message, Logger.LogType.CRITICAL);
                 Console.Write(HelpText.AutoBuild(options, null, null));
             }
-            
+            catch (FileNotFoundException ex)
+            {
+                logger.PrintNLog(ex.Message + ": " + ex.FileName, Logger.LogType.CRITICAL);
+            }
+
             if (pauseAfterExecution)
             {
                 Console.Write("Press any key to continue...");
@@ -97,8 +107,25 @@ namespace EasyDataMigrator
         /// Function that loads the configuration file for this execution, be it the default config file or user-specified
         /// </summary>
         /// <param name="configFile"></param>
-        private static void LoadConfig(string configFile, Commander commander)
+        private static void LoadConfig(string configFile, Commander commander, bool fullPath = false)
         {
+            bool filenameIsValidated = Utilities.ValidateFileName(configFile);
+
+            if (filenameIsValidated)
+            {
+                string defaultDirPath = @".\Configs\";
+                
+                if (!Directory.Exists(defaultDirPath))
+                    Directory.CreateDirectory(defaultDirPath);
+
+                configFile = defaultDirPath + configFile + ".config";
+            }
+
+            if (!fullPath && !filenameIsValidated)
+                throw new ArgumentOutOfRangeException(nameof(configFile), $"The file name specified is not valid. It can only contain numbers, letters, dashes, underscores and have a maximum length of 200 characters (Extension will be added automatically).{Environment.NewLine}Please if it is a path use -f|--fullpath.");
+            else if (!File.Exists(configFile))
+                throw new FileNotFoundException("The file especified does not exist", configFile);
+
             // We open the config file
             ExeConfigurationFileMap map = new() { ExeConfigFilename = configFile };
             Configuration config = ConfigurationManager.OpenMappedExeConfiguration(map, ConfigurationUserLevel.None);
@@ -116,17 +143,15 @@ namespace EasyDataMigrator
         /// <summary>
         /// Function that prints to console the list of saved maps in MapsLocation
         /// </summary>
-        private static void ListMaps()
+        private static void ListAppFiles(string fileType, string path, string fileExt)
         {
-            string mapsLocation = ConfigurationManager.AppSettings["MapsLocation"];
+            string[] TableMaps = Directory.GetFiles(path, "*" + fileExt, SearchOption.TopDirectoryOnly);
 
-            string[] TableMaps = Directory.GetFiles(mapsLocation, "*.tablemaps", SearchOption.TopDirectoryOnly);
-
-            string message = $"Available TableMaps in '{mapsLocation}':{Environment.NewLine}";
+            string message = $"Available {fileType} in '{path}':{Environment.NewLine}";
             TableMaps.ForEach(file => 
                         {
-                            string t = file.Replace(mapsLocation, ""); // We remove the path
-                            t = t.Replace(".tablemaps", ""); // We remove the extension
+                            string t = file.Replace(path, ""); // We remove the path
+                            t = t.Replace(fileExt, ""); // We remove the extension
                             message += $"\t- {t}{Environment.NewLine}";
                         });
 
@@ -262,19 +287,19 @@ namespace EasyDataMigrator
 
                 return; // A critical exception is fatal so the program cannot continue
             }
-            //catch (Exception ex)
-            //{
-            //    logger.PrintNLog(ex.Message, Logger.LogType.CRITICAL);
-            //    logger.PrintNLog("Migration process ended with errors.", Logger.LogType.CRITICAL);
+            catch (Exception ex) // Pokemon-catch (gotta catch'em all)
+            {
+                logger.PrintNLog(ex.Message, Logger.LogType.CRITICAL);
+                logger.PrintNLog("Migration process ended with errors.", Logger.LogType.CRITICAL);
 
-            //    if (commander.OrigConnection.SqlConnection.State == System.Data.ConnectionState.Open)
-            //        commander.OrigConnection.Close();
+                if (commander.OrigConnection.SqlConnection.State == System.Data.ConnectionState.Open)
+                    commander.OrigConnection.Close();
 
-            //    if (commander.DestConnection.SqlConnection.State == System.Data.ConnectionState.Open)
-            //        commander.DestConnection.Close();
+                if (commander.DestConnection.SqlConnection.State == System.Data.ConnectionState.Open)
+                    commander.DestConnection.Close();
 
-            //    return; // An uncaught exception is an unknown severity kind of exception so we are uncertain if we can continue with the execution or not
-            //}
+                return; // An uncaught exception is an unknown severity kind of exception so we are uncertain if we can continue with the execution or not
+            }
         }
     }
 }
