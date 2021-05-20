@@ -177,19 +177,34 @@ namespace EasyDataMigrator
             }
             catch (MigrationException ex) when (ex.SeverityLevel == MigrationException.ExceptionSeverityLevel.ERROR)
             {
-                logger.PrintNLog(ex.Message, Logger.LogType.ERROR);
+                string errorMsg = ex.Message;
+
+                if (ex.InnerException != null)
+                    errorMsg += " Error details: " + ex.InnerException.Message;
+
+                logger.PrintNLog(errorMsg, Logger.LogType.ERROR);
 
                 return;
             }
             catch (MigrationException ex) when (ex.SeverityLevel == MigrationException.ExceptionSeverityLevel.CRITICAL)
             {
-                logger.PrintNLog(ex.Message, Logger.LogType.CRITICAL);
+                string errorMsg = ex.Message;
+                
+                if (ex.InnerException != null)
+                    errorMsg += " Error details: " + ex.InnerException.Message;
+
+                logger.PrintNLog(errorMsg, Logger.LogType.CRITICAL);
 
                 return;
             }
             catch (Exception ex)
             {
-                logger.PrintNLog(ex.Message, Logger.LogType.CRITICAL);
+                string errorMsg = ex.Message;
+
+                if (ex.InnerException != null)
+                    errorMsg += " Error details: " + ex.InnerException.Message;
+
+                logger.PrintNLog(errorMsg, Logger.LogType.CRITICAL);
 
                 return;
             }
